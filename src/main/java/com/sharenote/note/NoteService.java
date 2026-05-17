@@ -24,16 +24,25 @@ public class NoteService {
     private final NoteRepository noteRepository;
     private final UserRepository userRepository;
     private final NoteFileStorage noteFileStorage;
+    private final NoteCommentRepository noteCommentRepository;
+    private final NoteUpvoteRepository noteUpvoteRepository;
+    private final NoteTakeALookSuggestionRepository takeALookSuggestionRepository;
     private final Clock clock;
 
     public NoteService(
             NoteRepository noteRepository,
             UserRepository userRepository,
-            NoteFileStorage noteFileStorage
+            NoteFileStorage noteFileStorage,
+            NoteCommentRepository noteCommentRepository,
+            NoteUpvoteRepository noteUpvoteRepository,
+            NoteTakeALookSuggestionRepository takeALookSuggestionRepository
     ) {
         this.noteRepository = noteRepository;
         this.userRepository = userRepository;
         this.noteFileStorage = noteFileStorage;
+        this.noteCommentRepository = noteCommentRepository;
+        this.noteUpvoteRepository = noteUpvoteRepository;
+        this.takeALookSuggestionRepository = takeALookSuggestionRepository;
         this.clock = Clock.systemUTC();
     }
 
@@ -140,6 +149,9 @@ public class NoteService {
                 note.getFileSize(),
                 uploadedBy.getId(),
                 formatName(uploadedBy),
+                noteCommentRepository.countByNoteId(note.getId()),
+                noteUpvoteRepository.countByNoteId(note.getId()),
+                takeALookSuggestionRepository.countByNoteId(note.getId()),
                 note.getCreatedAt()
         );
     }

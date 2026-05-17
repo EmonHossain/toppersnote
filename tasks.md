@@ -96,6 +96,24 @@
     * same year
   * Implement query filtering at service layer
 
+* [x] NOTE-009 Note Comments & Replies
+
+  * Allow authenticated users to add comments to shared notes
+  * Allow authenticated users to reply to top-level comments
+  * Return comments with nested replies through DTOs
+
+* [x] NOTE-010 Note Upvotes
+
+  * Allow authenticated users to like helpful notes
+  * Prevent duplicate likes from the same user
+  * Do not implement dislikes
+
+* [x] NOTE-011 Take A Look Suggestions
+
+  * Allow authenticated users to suggest note review to selected users
+  * Keep suggestions separate from comments, replies, and likes
+  * Return received suggestions for the current user
+
 ---
 
 ## ✅ GENERAL RULES

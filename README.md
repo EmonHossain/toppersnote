@@ -16,6 +16,9 @@ ShareNote is a Spring Boot backend for authenticated academic note sharing. It s
 - 10 MB upload limit by default
 - Local and S3 file storage backends
 - Note listing filtered by subject/class, semester, and year
+- Note comments and one-level replies
+- One-like-per-user note upvotes
+- Take-a-look suggestions for sharing a note with selected users
 - DTO-based API responses
 - Global exception handling
 - Unit tests for auth, user, note, and storage services
@@ -286,6 +289,76 @@ Authorization: Bearer <access-token>
 ```
 
 Returns notes matching the requested subject/class, semester, and year.
+
+### Add Comment
+
+```http
+POST /notes/{noteId}/comments
+Authorization: Bearer <access-token>
+Content-Type: application/json
+```
+
+```json
+{
+  "content": "This explanation helped me understand the topic."
+}
+```
+
+### Reply To Comment
+
+```http
+POST /notes/{noteId}/comments/{commentId}/replies
+Authorization: Bearer <access-token>
+Content-Type: application/json
+```
+
+```json
+{
+  "content": "Same here, especially section 2."
+}
+```
+
+### List Comments
+
+```http
+GET /notes/{noteId}/comments
+Authorization: Bearer <access-token>
+```
+
+Returns top-level comments with their replies.
+
+### Upvote Note
+
+```http
+POST /notes/{noteId}/upvotes
+Authorization: Bearer <access-token>
+```
+
+Creates a like for the current user if one does not already exist, then returns the note's upvote count.
+
+### Suggest Take A Look
+
+```http
+POST /notes/{noteId}/take-a-look
+Authorization: Bearer <access-token>
+Content-Type: application/json
+```
+
+```json
+{
+  "recipientUserIds": [2, 3],
+  "message": "This may help with our assignment."
+}
+```
+
+### My Take A Look Suggestions
+
+```http
+GET /notes/take-a-look
+Authorization: Bearer <access-token>
+```
+
+Returns notes other users suggested for the current user to review.
 
 ## Security Notes
 

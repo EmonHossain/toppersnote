@@ -1,12 +1,16 @@
 package com.sharenote.common;
 
+import com.sharenote.note.CommentNotFoundException;
 import com.sharenote.auth.InvalidCredentialsException;
 import com.sharenote.auth.InvalidRefreshTokenException;
 import com.sharenote.note.CurrentUserNotFoundException;
+import com.sharenote.note.InvalidNoteInteractionException;
 import com.sharenote.note.InvalidNoteQueryException;
+import com.sharenote.note.NoteNotFoundException;
 import com.sharenote.storage.FileStorageException;
 import com.sharenote.storage.InvalidFileException;
 import com.sharenote.user.EmailAlreadyExistsException;
+import com.sharenote.user.UserNotFoundException;
 import io.jsonwebtoken.security.WeakKeyException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -59,6 +63,26 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(InvalidNoteQueryException.class)
     public ResponseEntity<ErrorResponse> handleInvalidNoteQuery(InvalidNoteQueryException exception) {
         return buildResponse(HttpStatus.BAD_REQUEST, "Invalid note query", exception.getMessage(), Map.of());
+    }
+
+    @ExceptionHandler(InvalidNoteInteractionException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidNoteInteraction(InvalidNoteInteractionException exception) {
+        return buildResponse(HttpStatus.BAD_REQUEST, "Invalid note interaction", exception.getMessage(), Map.of());
+    }
+
+    @ExceptionHandler(NoteNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleNoteNotFound(NoteNotFoundException exception) {
+        return buildResponse(HttpStatus.NOT_FOUND, "Note not found", exception.getMessage(), Map.of());
+    }
+
+    @ExceptionHandler(CommentNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleCommentNotFound(CommentNotFoundException exception) {
+        return buildResponse(HttpStatus.NOT_FOUND, "Comment not found", exception.getMessage(), Map.of());
+    }
+
+    @ExceptionHandler(UserNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleUserNotFound(UserNotFoundException exception) {
+        return buildResponse(HttpStatus.NOT_FOUND, "User not found", exception.getMessage(), Map.of());
     }
 
     @ExceptionHandler(CurrentUserNotFoundException.class)

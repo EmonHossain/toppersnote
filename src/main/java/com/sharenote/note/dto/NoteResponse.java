@@ -12,6 +12,9 @@ public record NoteResponse(
         long fileSize,
         Long uploadedByUserId,
         String uploadedByName,
+        long commentCount,
+        long upvoteCount,
+        long takeALookSuggestionCount,
         Instant createdAt
 ) {
 }

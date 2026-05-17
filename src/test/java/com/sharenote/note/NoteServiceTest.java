@@ -49,6 +49,15 @@ class NoteServiceTest {
     @Mock
     private UserRepository userRepository;
 
+    @Mock
+    private NoteCommentRepository noteCommentRepository;
+
+    @Mock
+    private NoteUpvoteRepository noteUpvoteRepository;
+
+    @Mock
+    private NoteTakeALookSuggestionRepository takeALookSuggestionRepository;
+
     private NoteService noteService;
 
     @BeforeEach
@@ -58,7 +67,14 @@ class NoteServiceTest {
                 storageProperties,
                 new FileValidationService(storageProperties)
         );
-        noteService = new NoteService(noteRepository, userRepository, localNoteFileStorage);
+        noteService = new NoteService(
+                noteRepository,
+                userRepository,
+                localNoteFileStorage,
+                noteCommentRepository,
+                noteUpvoteRepository,
+                takeALookSuggestionRepository
+        );
         SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(
                 "amina@example.com",
                 null,
@@ -181,7 +197,14 @@ class NoteServiceTest {
                 storageProperties,
                 new FileValidationService(storageProperties)
         );
-        NoteService tinyLimitNoteService = new NoteService(noteRepository, userRepository, tinyLimitStorage);
+        NoteService tinyLimitNoteService = new NoteService(
+                noteRepository,
+                userRepository,
+                tinyLimitStorage,
+                noteCommentRepository,
+                noteUpvoteRepository,
+                takeALookSuggestionRepository
+        );
         MockMultipartFile file = new MockMultipartFile(
                 "file",
                 "calculus.pdf",
