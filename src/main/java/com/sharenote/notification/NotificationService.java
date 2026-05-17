@@ -1,5 +1,7 @@
 package com.sharenote.notification;
 
+import com.sharenote.audit.AuditAction;
+import com.sharenote.audit.AuditPublisher;
 import com.sharenote.note.CurrentUserNotFoundException;
 import com.sharenote.note.Note;
 import com.sharenote.notification.dto.NotificationResponse;
@@ -23,11 +25,17 @@ public class NotificationService implements NotificationPublisher {
 
     private final NotificationRepository notificationRepository;
     private final UserRepository userRepository;
+    private final AuditPublisher auditPublisher;
     private final Clock clock;
 
-    public NotificationService(NotificationRepository notificationRepository, UserRepository userRepository) {
+    public NotificationService(
+            NotificationRepository notificationRepository,
+            UserRepository userRepository,
+            AuditPublisher auditPublisher
+    ) {
         this.notificationRepository = notificationRepository;
         this.userRepository = userRepository;
+        this.auditPublisher = auditPublisher;
         this.clock = Clock.systemUTC();
     }
 
@@ -35,7 +43,13 @@ public class NotificationService implements NotificationPublisher {
     @Override
     public void notifyNewNote(Note note) {
         User uploadedBy = note.getUploadedBy();
-        List<Notification> notifications = userRepository.findAll()
+        List<Notification> notifications = userRepository
+                .findByInstitutionIgnoreCaseAndDegreeProgramIgnoreCaseAndCurrentYearIgnoreCaseAndCurrentSemesterIgnoreCase(
+                        note.getInstitution(),
+                        note.getDegreeProgram(),
+                        note.getYear(),
+                        note.getSemester()
+                )
                 .stream()
                 .filter(user -> !sameUser(user, uploadedBy))
                 .map(user -> new Notification(
@@ -99,7 +113,15 @@ public class NotificationService implements NotificationPublisher {
         }
 
         notification.markRead(Instant.now(clock));
-        return toResponse(notificationRepository.save(notification));
+        Notification savedNotification = notificationRepository.save(notification);
+        auditPublisher.publish(
+                AuditAction.NOTIFICATION_READ,
+                currentUser,
+                "NOTIFICATION",
+                savedNotification.getId(),
+                "Notification marked read"
+        );
+        return toResponse(savedNotification);
     }
 
     @Transactional
@@ -109,7 +131,16 @@ public class NotificationService implements NotificationPublisher {
                 .findByRecipientIdAndReadAtIsNullOrderByCreatedAtDesc(currentUser.getId());
         Instant readAt = Instant.now(clock);
         notifications.forEach(notification -> notification.markRead(readAt));
-        return notificationRepository.saveAll(notifications)
+        List<Notification> savedNotifications = notificationRepository.saveAll(notifications);
+        auditPublisher.publish(
+                AuditAction.NOTIFICATIONS_READ_ALL,
+                currentUser,
+                "NOTIFICATION",
+                null,
+                "All unread notifications marked read",
+                "count=" + savedNotifications.size()
+        );
+        return savedNotifications
                 .stream()
                 .map(this::toResponse)
                 .toList();

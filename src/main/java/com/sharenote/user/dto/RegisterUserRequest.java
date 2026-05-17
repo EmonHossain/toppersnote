@@ -34,9 +34,21 @@ public record RegisterUserRequest(
         @Size(max = 120, message = "Institution must be at most 120 characters")
         String institution,
 
+        @NotBlank(message = "Degree program is required")
+        @Size(max = 120, message = "Degree program must be at most 120 characters")
+        String degreeProgram,
+
         @NotBlank(message = "Current semester or year is required")
         @Size(max = 50, message = "Current semester or year must be at most 50 characters")
         String currentSemesterOrYear,
+
+        @NotBlank(message = "Current year is required")
+        @Size(max = 20, message = "Current year must be at most 20 characters")
+        String currentYear,
+
+        @NotBlank(message = "Current semester is required")
+        @Size(max = 50, message = "Current semester must be at most 50 characters")
+        String currentSemester,
 
         @NotBlank(message = "Phone number is required")
         @Size(max = 30, message = "Phone number must be at most 30 characters")

@@ -1,5 +1,7 @@
 package com.sharenote.note;
 
+import com.sharenote.academic.AcademicClassRegistrar;
+import com.sharenote.audit.AuditPublisher;
 import com.sharenote.note.dto.NoteUploadResponse;
 import com.sharenote.note.dto.NoteResponse;
 import com.sharenote.notification.NotificationPublisher;
@@ -62,6 +64,12 @@ class NoteServiceTest {
     @Mock
     private NotificationPublisher notificationPublisher;
 
+    @Mock
+    private AcademicClassRegistrar academicClassRegistrar;
+
+    @Mock
+    private AuditPublisher auditPublisher;
+
     private NoteService noteService;
 
     @BeforeEach
@@ -78,7 +86,9 @@ class NoteServiceTest {
                 noteCommentRepository,
                 noteUpvoteRepository,
                 takeALookSuggestionRepository,
-                notificationPublisher
+                notificationPublisher,
+                academicClassRegistrar,
+                auditPublisher
         );
         SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(
                 "amina@example.com",
@@ -209,7 +219,9 @@ class NoteServiceTest {
                 noteCommentRepository,
                 noteUpvoteRepository,
                 takeALookSuggestionRepository,
-                notificationPublisher
+                notificationPublisher,
+                academicClassRegistrar,
+                auditPublisher
         );
         MockMultipartFile file = new MockMultipartFile(
                 "file",
@@ -272,6 +284,8 @@ class NoteServiceTest {
         User uploader = user("Karim", "Said", "karim@example.com");
         Note note = new Note(
                 "Mathematics",
+                "university",
+                "Computer Science",
                 "3",
                 "2026",
                 "calculus.pdf",
@@ -284,7 +298,9 @@ class NoteServiceTest {
         );
 
         when(userRepository.findByEmailIgnoreCase("amina@example.com")).thenReturn(Optional.of(currentUser));
-        when(noteRepository.findBySubjectClassIgnoreCaseAndSemesterIgnoreCaseAndYearIgnoreCaseOrderByCreatedAtDesc(
+        when(noteRepository.findByInstitutionIgnoreCaseAndDegreeProgramIgnoreCaseAndSubjectClassIgnoreCaseAndSemesterIgnoreCaseAndYearIgnoreCaseOrderByCreatedAtDesc(
+                "university",
+                "Computer Science",
                 "Mathematics",
                 "3",
                 "2026"
@@ -299,7 +315,9 @@ class NoteServiceTest {
         assertThat(response.year()).isEqualTo("2026");
         assertThat(response.originalFileName()).isEqualTo("calculus.pdf");
         assertThat(response.uploadedByName()).isEqualTo("Karim Said");
-        verify(noteRepository).findBySubjectClassIgnoreCaseAndSemesterIgnoreCaseAndYearIgnoreCaseOrderByCreatedAtDesc(
+        verify(noteRepository).findByInstitutionIgnoreCaseAndDegreeProgramIgnoreCaseAndSubjectClassIgnoreCaseAndSemesterIgnoreCaseAndYearIgnoreCaseOrderByCreatedAtDesc(
+                "university",
+                "Computer Science",
                 "Mathematics",
                 "3",
                 "2026"
@@ -315,7 +333,9 @@ class NoteServiceTest {
                 .hasMessage("Semester is required");
 
         verify(noteRepository, never())
-                .findBySubjectClassIgnoreCaseAndSemesterIgnoreCaseAndYearIgnoreCaseOrderByCreatedAtDesc(
+                .findByInstitutionIgnoreCaseAndDegreeProgramIgnoreCaseAndSubjectClassIgnoreCaseAndSemesterIgnoreCaseAndYearIgnoreCaseOrderByCreatedAtDesc(
+                        any(),
+                        any(),
                         any(),
                         any(),
                         any()
@@ -331,7 +351,9 @@ class NoteServiceTest {
                 .hasMessage("Authenticated user could not be found");
 
         verify(noteRepository, never())
-                .findBySubjectClassIgnoreCaseAndSemesterIgnoreCaseAndYearIgnoreCaseOrderByCreatedAtDesc(
+                .findByInstitutionIgnoreCaseAndDegreeProgramIgnoreCaseAndSubjectClassIgnoreCaseAndSemesterIgnoreCaseAndYearIgnoreCaseOrderByCreatedAtDesc(
+                        any(),
+                        any(),
                         any(),
                         any(),
                         any()
@@ -350,6 +372,9 @@ class NoteServiceTest {
                 email,
                 "hashed-password",
                 "university",
+                "Computer Science",
+                "3",
+                "2026",
                 "3",
                 "+491234567890",
                 "Germany",

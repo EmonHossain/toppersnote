@@ -1,5 +1,8 @@
 package com.sharenote.note;
 
+import com.sharenote.academic.AcademicClassRegistrar;
+import com.sharenote.audit.AuditAction;
+import com.sharenote.audit.AuditPublisher;
 import com.sharenote.notification.NotificationPublisher;
 import com.sharenote.note.dto.NoteUploadResponse;
 import com.sharenote.note.dto.NoteResponse;
@@ -29,6 +32,8 @@ public class NoteService {
     private final NoteUpvoteRepository noteUpvoteRepository;
     private final NoteTakeALookSuggestionRepository takeALookSuggestionRepository;
     private final NotificationPublisher notificationPublisher;
+    private final AcademicClassRegistrar academicClassRegistrar;
+    private final AuditPublisher auditPublisher;
     private final Clock clock;
 
     public NoteService(
@@ -38,7 +43,9 @@ public class NoteService {
             NoteCommentRepository noteCommentRepository,
             NoteUpvoteRepository noteUpvoteRepository,
             NoteTakeALookSuggestionRepository takeALookSuggestionRepository,
-            NotificationPublisher notificationPublisher
+            NotificationPublisher notificationPublisher,
+            AcademicClassRegistrar academicClassRegistrar,
+            AuditPublisher auditPublisher
     ) {
         this.noteRepository = noteRepository;
         this.userRepository = userRepository;
@@ -47,6 +54,8 @@ public class NoteService {
         this.noteUpvoteRepository = noteUpvoteRepository;
         this.takeALookSuggestionRepository = takeALookSuggestionRepository;
         this.notificationPublisher = notificationPublisher;
+        this.academicClassRegistrar = academicClassRegistrar;
+        this.auditPublisher = auditPublisher;
         this.clock = Clock.systemUTC();
     }
 
@@ -67,6 +76,8 @@ public class NoteService {
         try {
             Note note = new Note(
                     normalizedSubjectClass,
+                    uploadedBy.getInstitution(),
+                    uploadedBy.getDegreeProgram(),
                     normalizedSemester,
                     normalizedYear,
                     storedFile.originalFileName(),
@@ -78,7 +89,16 @@ public class NoteService {
                     Instant.now(clock)
             );
             Note savedNote = noteRepository.save(note);
+            academicClassRegistrar.registerMatchingUsers(savedNote);
             notificationPublisher.notifyNewNote(savedNote);
+            auditPublisher.publish(
+                    AuditAction.NOTE_UPLOADED,
+                    uploadedBy,
+                    "NOTE",
+                    savedNote.getId(),
+                    "Note uploaded",
+                    "subjectClass=" + savedNote.getSubjectClass()
+            );
             return toResponse(savedNote);
         } catch (RuntimeException exception) {
             noteFileStorage.deleteIfExists(storedFile);
@@ -88,14 +108,16 @@ public class NoteService {
 
     @Transactional(readOnly = true)
     public List<NoteResponse> getVisibleNotes(String subjectClass, String semester, String year) {
-        getCurrentUser();
+        User currentUser = getCurrentUser();
 
         String normalizedSubjectClass = requireQueryText(subjectClass, "Subject/class is required");
         String normalizedSemester = requireQueryText(semester, "Semester is required");
         String normalizedYear = requireQueryText(year, "Year is required");
 
         return noteRepository
-                .findBySubjectClassIgnoreCaseAndSemesterIgnoreCaseAndYearIgnoreCaseOrderByCreatedAtDesc(
+                .findByInstitutionIgnoreCaseAndDegreeProgramIgnoreCaseAndSubjectClassIgnoreCaseAndSemesterIgnoreCaseAndYearIgnoreCaseOrderByCreatedAtDesc(
+                        currentUser.getInstitution(),
+                        currentUser.getDegreeProgram(),
                         normalizedSubjectClass,
                         normalizedSemester,
                         normalizedYear
@@ -133,6 +155,8 @@ public class NoteService {
         return new NoteUploadResponse(
                 note.getId(),
                 note.getSubjectClass(),
+                note.getInstitution(),
+                note.getDegreeProgram(),
                 note.getSemester(),
                 note.getYear(),
                 note.getOriginalFileName(),
@@ -148,6 +172,8 @@ public class NoteService {
         return new NoteResponse(
                 note.getId(),
                 note.getSubjectClass(),
+                note.getInstitution(),
+                note.getDegreeProgram(),
                 note.getSemester(),
                 note.getYear(),
                 note.getOriginalFileName(),

@@ -1,5 +1,7 @@
 package com.sharenote.note;
 
+import com.sharenote.audit.AuditAction;
+import com.sharenote.audit.AuditPublisher;
 import com.sharenote.notification.NotificationPublisher;
 import com.sharenote.note.dto.NoteCommentResponse;
 import com.sharenote.note.dto.NoteUpvoteResponse;
@@ -35,6 +37,7 @@ public class NoteInteractionService {
     private final NoteTakeALookSuggestionRepository takeALookSuggestionRepository;
     private final UserRepository userRepository;
     private final NotificationPublisher notificationPublisher;
+    private final AuditPublisher auditPublisher;
     private final Clock clock;
 
     public NoteInteractionService(
@@ -43,7 +46,8 @@ public class NoteInteractionService {
             NoteUpvoteRepository noteUpvoteRepository,
             NoteTakeALookSuggestionRepository takeALookSuggestionRepository,
             UserRepository userRepository,
-            NotificationPublisher notificationPublisher
+            NotificationPublisher notificationPublisher,
+            AuditPublisher auditPublisher
     ) {
         this.noteRepository = noteRepository;
         this.noteCommentRepository = noteCommentRepository;
@@ -51,6 +55,7 @@ public class NoteInteractionService {
         this.takeALookSuggestionRepository = takeALookSuggestionRepository;
         this.userRepository = userRepository;
         this.notificationPublisher = notificationPublisher;
+        this.auditPublisher = auditPublisher;
         this.clock = Clock.systemUTC();
     }
 
@@ -65,7 +70,9 @@ public class NoteInteractionService {
                 requireInteractionText(content, "Comment is required", 1000),
                 Instant.now(clock)
         );
-        return toCommentResponse(noteCommentRepository.save(comment), List.of());
+        NoteComment savedComment = noteCommentRepository.save(comment);
+        auditPublisher.publish(AuditAction.COMMENT_CREATED, author, "NOTE", note.getId(), "Comment added to note");
+        return toCommentResponse(savedComment, List.of());
     }
 
     @Transactional
@@ -89,7 +96,9 @@ public class NoteInteractionService {
                 requireInteractionText(content, "Reply is required", 1000),
                 Instant.now(clock)
         );
-        return toCommentResponse(noteCommentRepository.save(reply), List.of());
+        NoteComment savedReply = noteCommentRepository.save(reply);
+        auditPublisher.publish(AuditAction.REPLY_CREATED, author, "NOTE", note.getId(), "Reply added to note comment");
+        return toCommentResponse(savedReply, List.of());
     }
 
     @Transactional(readOnly = true)
@@ -115,6 +124,7 @@ public class NoteInteractionService {
         Long resolvedNoteId = resolveNoteId(note, noteId);
         if (!noteUpvoteRepository.existsByNoteIdAndUserId(resolvedNoteId, user.getId())) {
             noteUpvoteRepository.save(new NoteUpvote(note, user, Instant.now(clock)));
+            auditPublisher.publish(AuditAction.NOTE_UPVOTED, user, "NOTE", resolvedNoteId, "Note upvoted");
         }
 
         return new NoteUpvoteResponse(resolvedNoteId, noteUpvoteRepository.countByNoteId(resolvedNoteId), true);
@@ -155,6 +165,16 @@ public class NoteInteractionService {
             responses.add(toTakeALookResponse(suggestion));
         }
         notificationPublisher.notifyTakeALook(note, suggestedBy, newlyMentionedUsers, normalizedMessage);
+        if (!newlyMentionedUsers.isEmpty()) {
+            auditPublisher.publish(
+                    AuditAction.TAKE_A_LOOK_SUGGESTED,
+                    suggestedBy,
+                    "NOTE",
+                    noteId,
+                    "Take a look suggested",
+                    "recipientCount=" + newlyMentionedUsers.size()
+            );
+        }
 
         return responses;
     }

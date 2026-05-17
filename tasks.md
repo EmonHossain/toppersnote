@@ -39,7 +39,10 @@
     * email (unique, required)
     * password (hashed)
     * institution (school/college/university)
+    * degreeProgram
     * currentSemesterOrYear
+    * currentYear
+    * currentSemester
     * phoneNumber
     * country
   * Use Hibernate (JPA) for persistence
@@ -91,6 +94,8 @@
 
   * Notes visible only to users with:
 
+    * same institution
+    * same degree program
     * same subject/class
     * same semester
     * same year
@@ -119,6 +124,31 @@
   * Notify users when a new note is added
   * Notify mentioned users when someone suggests they take a look at a note
   * Allow users to list notifications and mark them as read
+
+* [x] NOTE-013 Academic Class Registration & Navigation
+
+  * Register users automatically for matching classes by institution, degree program, year, semester, and subject
+  * Store note academic context using the uploader's institution and degree program
+  * Allow users to navigate degree programs, years, semesters, subjects, and their registered classes
+
+---
+
+## ADMIN MODULE
+
+* [x] ADMIN-014 Admin Moderation
+
+  * Protect admin endpoints with `ROLE_ADMIN`
+  * Allow admins to list users
+  * Allow admins to temporarily ban users with a notice
+  * Escalate repeated policy violations to permanent bans
+  * Allow admins to permanently ban and unban users
+  * Enforce bans during login, token refresh, and JWT-protected requests
+
+* [x] ADMIN-015 Audit Trail
+
+  * Persist audit events for authentication, user, note, notification, and moderation actions
+  * Allow admins to query audit events
+  * Include actor, target, action, message, metadata, and timestamp
 
 ---
 

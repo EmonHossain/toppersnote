@@ -1,5 +1,6 @@
 package com.sharenote.note;
 
+import com.sharenote.audit.AuditPublisher;
 import com.sharenote.note.dto.NoteCommentResponse;
 import com.sharenote.note.dto.NoteUpvoteResponse;
 import com.sharenote.note.dto.TakeALookRequest;
@@ -52,6 +53,9 @@ class NoteInteractionServiceTest {
     @Mock
     private NotificationPublisher notificationPublisher;
 
+    @Mock
+    private AuditPublisher auditPublisher;
+
     private NoteInteractionService noteInteractionService;
 
     @BeforeEach
@@ -62,7 +66,8 @@ class NoteInteractionServiceTest {
                 noteUpvoteRepository,
                 takeALookSuggestionRepository,
                 userRepository,
-                notificationPublisher
+                notificationPublisher,
+                auditPublisher
         );
         SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(
                 "amina@example.com",
@@ -211,6 +216,8 @@ class NoteInteractionServiceTest {
     private Note note(Long id) {
         Note note = new Note(
                 "Mathematics",
+                "university",
+                "Computer Science",
                 "3",
                 "2026",
                 "calculus.pdf",
@@ -233,6 +240,9 @@ class NoteInteractionServiceTest {
                 email,
                 "hashed-password",
                 "university",
+                "Computer Science",
+                "3",
+                "2026",
                 "3",
                 "+491234567890",
                 "Germany",

@@ -1,5 +1,6 @@
 package com.sharenote.common;
 
+import com.sharenote.academic.InvalidAcademicNavigationException;
 import com.sharenote.note.CommentNotFoundException;
 import com.sharenote.auth.InvalidCredentialsException;
 import com.sharenote.auth.InvalidRefreshTokenException;
@@ -10,6 +11,7 @@ import com.sharenote.note.NoteNotFoundException;
 import com.sharenote.notification.NotificationNotFoundException;
 import com.sharenote.storage.FileStorageException;
 import com.sharenote.storage.InvalidFileException;
+import com.sharenote.user.AccountBannedException;
 import com.sharenote.user.EmailAlreadyExistsException;
 import com.sharenote.user.UserNotFoundException;
 import io.jsonwebtoken.security.WeakKeyException;
@@ -51,6 +53,11 @@ public class GlobalExceptionHandler {
         return buildResponse(HttpStatus.UNAUTHORIZED, "Authentication failed", exception.getMessage(), Map.of());
     }
 
+    @ExceptionHandler(AccountBannedException.class)
+    public ResponseEntity<ErrorResponse> handleAccountBanned(AccountBannedException exception) {
+        return buildResponse(HttpStatus.FORBIDDEN, "Account banned", exception.getMessage(), Map.of());
+    }
+
     @ExceptionHandler(EmailAlreadyExistsException.class)
     public ResponseEntity<ErrorResponse> handleEmailAlreadyExists(EmailAlreadyExistsException exception) {
         return buildResponse(HttpStatus.CONFLICT, "Email already exists", exception.getMessage(), Map.of());
@@ -69,6 +76,11 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(InvalidNoteInteractionException.class)
     public ResponseEntity<ErrorResponse> handleInvalidNoteInteraction(InvalidNoteInteractionException exception) {
         return buildResponse(HttpStatus.BAD_REQUEST, "Invalid note interaction", exception.getMessage(), Map.of());
+    }
+
+    @ExceptionHandler(InvalidAcademicNavigationException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidAcademicNavigation(InvalidAcademicNavigationException exception) {
+        return buildResponse(HttpStatus.BAD_REQUEST, "Invalid academic navigation", exception.getMessage(), Map.of());
     }
 
     @ExceptionHandler(NoteNotFoundException.class)

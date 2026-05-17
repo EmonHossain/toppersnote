@@ -1,5 +1,6 @@
 package com.sharenote.auth;
 
+import com.sharenote.audit.AuditPublisher;
 import com.sharenote.auth.dto.AuthResponse;
 import com.sharenote.auth.dto.LoginRequest;
 import com.sharenote.user.Role;
@@ -33,6 +34,9 @@ class AuthServiceTest {
     @Mock
     private UserRepository userRepository;
 
+    @Mock
+    private AuditPublisher auditPublisher;
+
     private AuthService authService;
     private TestJwtService jwtService;
     private TestRefreshTokenService refreshTokenService;
@@ -41,7 +45,7 @@ class AuthServiceTest {
     void setUp() {
         jwtService = new TestJwtService();
         refreshTokenService = new TestRefreshTokenService();
-        authService = new AuthService(authenticationManager, jwtService, refreshTokenService, userRepository);
+        authService = new AuthService(authenticationManager, jwtService, refreshTokenService, userRepository, auditPublisher);
     }
 
     @Test
@@ -100,6 +104,9 @@ class AuthServiceTest {
                 "amina@example.com",
                 "hashed-password",
                 "university",
+                "Computer Science",
+                "3",
+                "2026",
                 "3",
                 "+491234567890",
                 "Germany",

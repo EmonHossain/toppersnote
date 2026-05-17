@@ -1,5 +1,6 @@
 package com.sharenote.auth;
 
+import com.sharenote.user.AccountBannedException;
 import com.sharenote.user.User;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -56,6 +57,9 @@ public class RefreshTokenService {
         existingToken.revoke();
         User user = existingToken.getUser();
         user.getRoles().size();
+        if (user.isCurrentlyBanned(Instant.now(clock))) {
+            throw new AccountBannedException("Account is banned. Refresh token cannot be used.");
+        }
 
         String newRawToken = createRefreshToken(user);
         return new RefreshTokenRotation(user, newRawToken);

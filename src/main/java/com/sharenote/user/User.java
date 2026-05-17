@@ -13,6 +13,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.Table;
 
+import java.time.Instant;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -42,8 +43,17 @@ public class User {
     @Column(nullable = false, length = 120)
     private String institution;
 
+    @Column(nullable = false, length = 120)
+    private String degreeProgram;
+
     @Column(nullable = false, length = 50)
     private String currentSemesterOrYear;
+
+    @Column(nullable = false, length = 20)
+    private String currentYear;
+
+    @Column(nullable = false, length = 50)
+    private String currentSemester;
 
     @Column(nullable = false, length = 30)
     private String phoneNumber;
@@ -68,6 +78,20 @@ public class User {
     @Column(length = 1000)
     private String profilePictureStorageLocation;
 
+    @Column(nullable = false)
+    private boolean permanentlyBanned;
+
+    private Instant bannedUntil;
+
+    @Column(length = 1000)
+    private String banNotice;
+
+    @Column(length = 1000)
+    private String banReason;
+
+    @Column(nullable = false)
+    private int policyViolationCount;
+
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "user_roles", joinColumns = @JoinColumn(name = "user_id"))
     @Enumerated(EnumType.STRING)
@@ -90,7 +114,10 @@ public class User {
             String email,
             String password,
             String institution,
+            String degreeProgram,
             String currentSemesterOrYear,
+            String currentYear,
+            String currentSemester,
             String phoneNumber,
             String country,
             Set<Role> roles
@@ -101,7 +128,10 @@ public class User {
         this.email = email;
         this.password = password;
         this.institution = institution;
+        this.degreeProgram = degreeProgram;
         this.currentSemesterOrYear = currentSemesterOrYear;
+        this.currentYear = currentYear;
+        this.currentSemester = currentSemester;
         this.phoneNumber = phoneNumber;
         this.country = country;
         this.roles = roles;
@@ -135,8 +165,20 @@ public class User {
         return institution;
     }
 
+    public String getDegreeProgram() {
+        return degreeProgram;
+    }
+
     public String getCurrentSemesterOrYear() {
         return currentSemesterOrYear;
+    }
+
+    public String getCurrentYear() {
+        return currentYear;
+    }
+
+    public String getCurrentSemester() {
+        return currentSemester;
     }
 
     public String getPhoneNumber() {
@@ -193,5 +235,52 @@ public class User {
         this.profilePictureFileSize = fileSize;
         this.profilePictureStorageKey = storageKey;
         this.profilePictureStorageLocation = storageLocation;
+    }
+
+    public boolean isPermanentlyBanned() {
+        return permanentlyBanned;
+    }
+
+    public Instant getBannedUntil() {
+        return bannedUntil;
+    }
+
+    public String getBanNotice() {
+        return banNotice;
+    }
+
+    public String getBanReason() {
+        return banReason;
+    }
+
+    public int getPolicyViolationCount() {
+        return policyViolationCount;
+    }
+
+    public boolean isCurrentlyBanned(Instant now) {
+        return permanentlyBanned || (bannedUntil != null && bannedUntil.isAfter(now));
+    }
+
+    public void banTemporarily(Instant until, String reason, String notice) {
+        this.permanentlyBanned = false;
+        this.bannedUntil = until;
+        this.banReason = reason;
+        this.banNotice = notice;
+        this.policyViolationCount++;
+    }
+
+    public void banPermanently(String reason, String notice) {
+        this.permanentlyBanned = true;
+        this.bannedUntil = null;
+        this.banReason = reason;
+        this.banNotice = notice;
+        this.policyViolationCount++;
+    }
+
+    public void clearBan(String notice) {
+        this.permanentlyBanned = false;
+        this.bannedUntil = null;
+        this.banNotice = notice;
+        this.banReason = null;
     }
 }

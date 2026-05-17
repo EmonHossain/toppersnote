@@ -1,5 +1,7 @@
 package com.sharenote.user;
 
+import com.sharenote.audit.AuditAction;
+import com.sharenote.audit.AuditPublisher;
 import com.sharenote.storage.ProfilePictureFileStorage;
 import com.sharenote.storage.StoredFile;
 import com.sharenote.user.dto.RegisterUserRequest;
@@ -21,15 +23,18 @@ public class UserService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final ProfilePictureFileStorage profilePictureFileStorage;
+    private final AuditPublisher auditPublisher;
 
     public UserService(
             UserRepository userRepository,
             PasswordEncoder passwordEncoder,
-            ProfilePictureFileStorage profilePictureFileStorage
+            ProfilePictureFileStorage profilePictureFileStorage,
+            AuditPublisher auditPublisher
     ) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.profilePictureFileStorage = profilePictureFileStorage;
+        this.auditPublisher = auditPublisher;
     }
 
     @Transactional
@@ -46,13 +51,18 @@ public class UserService {
                 normalizedEmail,
                 passwordEncoder.encode(request.password()),
                 request.institution().trim(),
+                request.degreeProgram().trim(),
                 request.currentSemesterOrYear().trim(),
+                request.currentYear().trim(),
+                request.currentSemester().trim(),
                 request.phoneNumber().trim(),
                 request.country().trim(),
                 Set.of(Role.USER)
         );
 
-        return toResponse(userRepository.save(user));
+        User savedUser = userRepository.save(user);
+        auditPublisher.publish(AuditAction.USER_REGISTERED, savedUser, "USER", savedUser.getId(), "User registered");
+        return toResponse(savedUser);
     }
 
     @Transactional
@@ -71,6 +81,13 @@ public class UserService {
                     storedFile.storageLocation()
             );
             UserResponse response = toResponse(userRepository.save(user));
+            auditPublisher.publish(
+                    AuditAction.PROFILE_PICTURE_UPDATED,
+                    user,
+                    "USER",
+                    user.getId(),
+                    "Profile picture updated"
+            );
             registerProfilePictureCleanup(storedFile, previousProfilePicture);
             return response;
         } catch (RuntimeException exception) {
@@ -87,12 +104,20 @@ public class UserService {
                 user.getLastName(),
                 user.getEmail(),
                 user.getInstitution(),
+                user.getDegreeProgram(),
                 user.getCurrentSemesterOrYear(),
+                user.getCurrentYear(),
+                user.getCurrentSemester(),
                 user.getPhoneNumber(),
                 user.getCountry(),
                 user.getProfilePictureOriginalFileName(),
                 user.getProfilePictureContentType(),
                 user.getProfilePictureFileSize(),
+                user.isPermanentlyBanned(),
+                user.getBannedUntil(),
+                user.getBanNotice(),
+                user.getBanReason(),
+                user.getPolicyViolationCount(),
                 user.getRoles().stream().map(Enum::name).collect(java.util.stream.Collectors.toSet())
         );
     }

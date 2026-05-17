@@ -6,7 +6,9 @@ import java.util.List;
 
 public interface NoteRepository extends JpaRepository<Note, Long> {
 
-    List<Note> findBySubjectClassIgnoreCaseAndSemesterIgnoreCaseAndYearIgnoreCaseOrderByCreatedAtDesc(
+    List<Note> findByInstitutionIgnoreCaseAndDegreeProgramIgnoreCaseAndSubjectClassIgnoreCaseAndSemesterIgnoreCaseAndYearIgnoreCaseOrderByCreatedAtDesc(
+            String institution,
+            String degreeProgram,
             String subjectClass,
             String semester,
             String year

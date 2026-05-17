@@ -1,24 +1,17 @@
-package com.sharenote.user.dto;
+package com.sharenote.admin.dto;
 
 import java.time.Instant;
 import java.util.Set;
 
-public record UserResponse(
+public record AdminUserResponse(
         Long id,
         String firstName,
-        String middleName,
         String lastName,
         String email,
         String institution,
         String degreeProgram,
-        String currentSemesterOrYear,
         String currentYear,
         String currentSemester,
-        String phoneNumber,
-        String country,
-        String profilePictureOriginalFileName,
-        String profilePictureContentType,
-        Long profilePictureFileSize,
         boolean permanentlyBanned,
         Instant bannedUntil,
         String banNotice,

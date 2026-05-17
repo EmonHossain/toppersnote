@@ -1,5 +1,6 @@
 package com.sharenote.user;
 
+import com.sharenote.audit.AuditPublisher;
 import com.sharenote.storage.ProfilePictureFileStorage;
 import com.sharenote.storage.StoredFile;
 import com.sharenote.user.dto.RegisterUserRequest;
@@ -38,6 +39,9 @@ class UserServiceTest {
 
     @Mock
     private ProfilePictureFileStorage profilePictureFileStorage;
+
+    @Mock
+    private AuditPublisher auditPublisher;
 
     @InjectMocks
     private UserService userService;
@@ -177,6 +181,9 @@ class UserServiceTest {
                 "AMINA@example.com",
                 "StrongPass123",
                 "university",
+                "Computer Science",
+                "3",
+                "2026",
                 "3",
                 "+491234567890",
                 "Germany"
@@ -208,6 +215,9 @@ class UserServiceTest {
                 "amina@example.com",
                 "hashed-password",
                 "university",
+                "Computer Science",
+                "3",
+                "2026",
                 "3",
                 "+491234567890",
                 "Germany",

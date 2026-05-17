@@ -24,6 +24,12 @@ public class Note {
     @Column(nullable = false, length = 120)
     private String subjectClass;
 
+    @Column(nullable = false, length = 120)
+    private String institution;
+
+    @Column(nullable = false, length = 120)
+    private String degreeProgram;
+
     @Column(nullable = false, length = 50)
     private String semester;
 
@@ -57,6 +63,8 @@ public class Note {
 
     public Note(
             String subjectClass,
+            String institution,
+            String degreeProgram,
             String semester,
             String year,
             String originalFileName,
@@ -68,6 +76,8 @@ public class Note {
             Instant createdAt
     ) {
         this.subjectClass = subjectClass;
+        this.institution = institution;
+        this.degreeProgram = degreeProgram;
         this.semester = semester;
         this.year = year;
         this.originalFileName = originalFileName;
@@ -85,6 +95,14 @@ public class Note {
 
     public String getSubjectClass() {
         return subjectClass;
+    }
+
+    public String getInstitution() {
+        return institution;
+    }
+
+    public String getDegreeProgram() {
+        return degreeProgram;
     }
 
     public String getSemester() {

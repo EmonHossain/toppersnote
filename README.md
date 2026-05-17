@@ -1,6 +1,6 @@
 # ShareNote Backend
 
-ShareNote is a Spring Boot backend for authenticated academic note sharing. It supports user registration, JWT-based stateless authentication, refresh tokens, secure note uploads, local or S3-backed file storage, and note visibility filtering by subject/class, semester, and year.
+ShareNote is a Spring Boot backend for authenticated academic note sharing. It supports user registration, JWT-based stateless authentication, refresh tokens, secure note uploads, local or S3-backed file storage, academic class registration, and note visibility filtering by institution, degree program, subject/class, semester, and year.
 
 ## Features
 
@@ -9,17 +9,22 @@ ShareNote is a Spring Boot backend for authenticated academic note sharing. It s
 - Stateless Spring Security configuration
 - User registration and login
 - Authenticated profile-picture setup
+- Academic class registration by institution, degree program, year, semester, and subject
 - BCrypt password hashing
 - Multipart note upload
 - File whitelist validation for images, PDF, Word, Excel, and PowerPoint files
 - Basic executable-content checks
 - 10 MB upload limit by default
 - Local and S3 file storage backends
-- Note listing filtered by subject/class, semester, and year
+- Note listing filtered by institution, degree program, subject/class, semester, and year
+- Academic navigation for degree programs, years, semesters, and subjects
 - Note comments and one-level replies
 - One-like-per-user note upvotes
 - Take-a-look suggestions for sharing a note with selected users
 - Persistent notifications for new notes and take-a-look mentions
+- Admin-only moderation endpoints
+- Audit trail for authentication, content, notifications, and moderation events
+- Temporary and permanent user bans with user-facing notices
 - DTO-based API responses
 - Global exception handling
 - Unit tests for auth, user, note, and storage services
@@ -39,6 +44,9 @@ ShareNote is a Spring Boot backend for authenticated academic note sharing. It s
 
 ```text
 src/main/java/com/sharenote
+  academic/   Academic classes, auto-registration, and navigation
+  admin/      Admin moderation endpoints and DTOs
+  audit/      Audit-event persistence and query logic
   auth/       Authentication, JWT, refresh-token logic
   common/     Shared error response and exception handling
   note/       Note upload, metadata, and visibility filtering
@@ -216,7 +224,10 @@ Content-Type: application/json
   "email": "amina@example.com",
   "password": "StrongPass123",
   "institution": "university",
+  "degreeProgram": "Computer Science",
   "currentSemesterOrYear": "3",
+  "currentYear": "2026",
+  "currentSemester": "3",
   "phoneNumber": "+491234567890",
   "country": "Germany"
 }
@@ -289,7 +300,36 @@ GET /notes?subjectClass=Mathematics&semester=3&year=2026
 Authorization: Bearer <access-token>
 ```
 
-Returns notes matching the requested subject/class, semester, and year.
+Returns notes matching the current user's institution and degree program plus the requested subject/class, semester, and year.
+
+### Academic Navigation
+
+```http
+GET /academic/degree-programs
+Authorization: Bearer <access-token>
+```
+
+```http
+GET /academic/years?degreeProgram=Computer%20Science
+Authorization: Bearer <access-token>
+```
+
+```http
+GET /academic/semesters?degreeProgram=Computer%20Science&year=2026
+Authorization: Bearer <access-token>
+```
+
+```http
+GET /academic/subjects?degreeProgram=Computer%20Science&year=2026&semester=3
+Authorization: Bearer <access-token>
+```
+
+```http
+GET /academic/classes/me
+Authorization: Bearer <access-token>
+```
+
+Users are automatically registered to a class when their institution, degree program, current year, and current semester match a note's class key.
 
 ### Add Comment
 
@@ -393,12 +433,82 @@ PATCH /notifications/read-all
 Authorization: Bearer <access-token>
 ```
 
+### Admin List Users
+
+```http
+GET /admin/users
+Authorization: Bearer <admin-access-token>
+```
+
+### Temporary Ban User
+
+```http
+PATCH /admin/users/{userId}/ban-temporary
+Authorization: Bearer <admin-access-token>
+Content-Type: application/json
+```
+
+```json
+{
+  "durationDays": 7,
+  "reason": "Uploaded policy-violating content",
+  "notice": "Your account is paused for review."
+}
+```
+
+Repeated temporary bans escalate to a permanent ban after repeated policy violations.
+
+### Permanent Ban User
+
+```http
+PATCH /admin/users/{userId}/ban-permanent
+Authorization: Bearer <admin-access-token>
+Content-Type: application/json
+```
+
+```json
+{
+  "reason": "Repeated policy violations",
+  "notice": "Your account has been permanently banned."
+}
+```
+
+### Unban User
+
+```http
+PATCH /admin/users/{userId}/unban
+Authorization: Bearer <admin-access-token>
+Content-Type: application/json
+```
+
+```json
+{
+  "notice": "Your appeal was accepted."
+}
+```
+
+### Audit Events
+
+```http
+GET /admin/audit-events
+Authorization: Bearer <admin-access-token>
+```
+
+Optional filters:
+
+- `action`
+- `actorUserId`
+- `targetType`
+- `targetId`
+
 ## Security Notes
 
 - Passwords are hashed with BCrypt.
 - Access tokens include user ID and roles.
 - Endpoints are stateless; HTTP sessions are not used.
 - All endpoints are protected except `/auth/**` and `POST /users/register`.
+- Admin endpoints under `/admin/**` require `ROLE_ADMIN`.
+- Temporarily or permanently banned users cannot log in, refresh tokens, or use JWT-protected endpoints.
 - Uploaded files are validated by extension, content type, size, and basic file signature checks.
 - Internal storage paths and stored filenames are not exposed in note listing responses.
 

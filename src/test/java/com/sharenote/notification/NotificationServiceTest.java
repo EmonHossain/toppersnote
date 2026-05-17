@@ -1,5 +1,6 @@
 package com.sharenote.notification;
 
+import com.sharenote.audit.AuditPublisher;
 import com.sharenote.note.Note;
 import com.sharenote.notification.dto.NotificationResponse;
 import com.sharenote.notification.dto.NotificationSummaryResponse;
@@ -39,11 +40,14 @@ class NotificationServiceTest {
     @Mock
     private UserRepository userRepository;
 
+    @Mock
+    private AuditPublisher auditPublisher;
+
     private NotificationService notificationService;
 
     @BeforeEach
     void setUp() {
-        notificationService = new NotificationService(notificationRepository, userRepository);
+        notificationService = new NotificationService(notificationRepository, userRepository, auditPublisher);
         SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(
                 "amina@example.com",
                 null,
@@ -62,7 +66,12 @@ class NotificationServiceTest {
         User recipient = user(2L, "Karim", "Said", "karim@example.com");
         Note note = note(10L, uploader);
 
-        when(userRepository.findAll()).thenReturn(List.of(uploader, recipient));
+        when(userRepository.findByInstitutionIgnoreCaseAndDegreeProgramIgnoreCaseAndCurrentYearIgnoreCaseAndCurrentSemesterIgnoreCase(
+                "university",
+                "Computer Science",
+                "2026",
+                "3"
+        )).thenReturn(List.of(uploader, recipient));
         when(notificationRepository.saveAll(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
         notificationService.notifyNewNote(note);
@@ -193,6 +202,8 @@ class NotificationServiceTest {
     private Note note(Long id, User uploadedBy) {
         Note note = new Note(
                 "Mathematics",
+                "university",
+                "Computer Science",
                 "3",
                 "2026",
                 "calculus.pdf",
@@ -215,6 +226,9 @@ class NotificationServiceTest {
                 email,
                 "hashed-password",
                 "university",
+                "Computer Science",
+                "3",
+                "2026",
                 "3",
                 "+491234567890",
                 "Germany",
