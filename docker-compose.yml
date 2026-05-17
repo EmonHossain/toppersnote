@@ -1,0 +1,17 @@
+services:
+  sharenote-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: sharenote-api:latest
+    container_name: sharenote-api
+    env_file:
+      - .env
+    ports:
+      - "${APP_PORT:-8080}:${SERVER_PORT:-8080}"
+    volumes:
+      - sharenote_uploads:/app/uploads/notes
+    restart: unless-stopped
+
+volumes:
+  sharenote_uploads:
