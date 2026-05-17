@@ -29,8 +29,7 @@ public class NoteController {
             @RequestParam("file") MultipartFile file,
             @RequestParam("subjectClass") String subjectClass,
             @RequestParam("semester") String semester,
-            @RequestParam("year") String year
-    ) {
+            @RequestParam("year") String year) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(noteService.uploadNote(file, subjectClass, semester, year));
     }
@@ -39,8 +38,7 @@ public class NoteController {
     public ResponseEntity<List<NoteResponse>> getVisibleNotes(
             @RequestParam("subjectClass") String subjectClass,
             @RequestParam("semester") String semester,
-            @RequestParam("year") String year
-    ) {
+            @RequestParam("year") String year) {
         return ResponseEntity.ok(noteService.getVisibleNotes(subjectClass, semester, year));
     }
 }

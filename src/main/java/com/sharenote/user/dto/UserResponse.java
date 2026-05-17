@@ -12,6 +12,9 @@ public record UserResponse(
         String currentSemesterOrYear,
         String phoneNumber,
         String country,
+        String profilePictureOriginalFileName,
+        String profilePictureContentType,
+        Long profilePictureFileSize,
         Set<String> roles
 ) {
 }

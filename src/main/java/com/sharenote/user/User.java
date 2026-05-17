@@ -51,6 +51,23 @@ public class User {
     @Column(nullable = false, length = 100)
     private String country;
 
+    @Column(length = 255)
+    private String profilePictureOriginalFileName;
+
+    @Column(length = 255)
+    private String profilePictureStoredFileName;
+
+    @Column(length = 100)
+    private String profilePictureContentType;
+
+    private Long profilePictureFileSize;
+
+    @Column(length = 500)
+    private String profilePictureStorageKey;
+
+    @Column(length = 1000)
+    private String profilePictureStorageLocation;
+
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "user_roles", joinColumns = @JoinColumn(name = "user_id"))
     @Enumerated(EnumType.STRING)
@@ -132,5 +149,49 @@ public class User {
 
     public Set<Role> getRoles() {
         return roles;
+    }
+
+    public String getProfilePictureOriginalFileName() {
+        return profilePictureOriginalFileName;
+    }
+
+    public String getProfilePictureStoredFileName() {
+        return profilePictureStoredFileName;
+    }
+
+    public String getProfilePictureContentType() {
+        return profilePictureContentType;
+    }
+
+    public Long getProfilePictureFileSize() {
+        return profilePictureFileSize;
+    }
+
+    public String getProfilePictureStorageKey() {
+        return profilePictureStorageKey;
+    }
+
+    public String getProfilePictureStorageLocation() {
+        return profilePictureStorageLocation;
+    }
+
+    public boolean hasProfilePicture() {
+        return profilePictureStorageLocation != null;
+    }
+
+    public void updateProfilePicture(
+            String originalFileName,
+            String storedFileName,
+            String contentType,
+            long fileSize,
+            String storageKey,
+            String storageLocation
+    ) {
+        this.profilePictureOriginalFileName = originalFileName;
+        this.profilePictureStoredFileName = storedFileName;
+        this.profilePictureContentType = contentType;
+        this.profilePictureFileSize = fileSize;
+        this.profilePictureStorageKey = storageKey;
+        this.profilePictureStorageLocation = storageLocation;
     }
 }

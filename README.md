@@ -8,6 +8,7 @@ ShareNote is a Spring Boot backend for authenticated academic note sharing. It s
 - Refresh token rotation
 - Stateless Spring Security configuration
 - User registration and login
+- Authenticated profile-picture setup
 - BCrypt password hashing
 - Multipart note upload
 - File whitelist validation for images, PDF, Word, Excel, and PowerPoint files
@@ -78,6 +79,9 @@ The default `.env.example` includes development values for:
 - `NOTE_STORAGE_TYPE`
 - `NOTE_STORAGE_DIRECTORY`
 - `NOTE_MAX_FILE_SIZE_BYTES`
+- `PROFILE_PICTURE_STORAGE_TYPE`
+- `PROFILE_PICTURE_STORAGE_DIRECTORY`
+- `PROFILE_PICTURE_MAX_FILE_SIZE_BYTES`
 
 Use a strong JWT secret in every real environment:
 
@@ -229,6 +233,20 @@ Content-Type: application/json
 ```
 
 Returns an access token and refresh token.
+
+### Setup Profile Picture
+
+```http
+POST /users/me/profile-picture
+Authorization: Bearer <access-token>
+Content-Type: multipart/form-data
+```
+
+Multipart fields:
+
+- `file` image only: jpg, jpeg, png, gif, or webp
+
+Returns the updated user DTO with profile-picture metadata.
 
 ### Refresh Token
 

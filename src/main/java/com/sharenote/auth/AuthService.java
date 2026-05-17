@@ -22,8 +22,7 @@ public class AuthService {
             AuthenticationManager authenticationManager,
             JwtService jwtService,
             RefreshTokenService refreshTokenService,
-            UserRepository userRepository
-    ) {
+            UserRepository userRepository) {
         this.authenticationManager = authenticationManager;
         this.jwtService = jwtService;
         this.refreshTokenService = refreshTokenService;
@@ -35,8 +34,7 @@ public class AuthService {
 
         try {
             authenticationManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(normalizedEmail, request.password())
-            );
+                    new UsernamePasswordAuthenticationToken(normalizedEmail, request.password()));
         } catch (AuthenticationException exception) {
             throw new InvalidCredentialsException();
         }
@@ -48,8 +46,7 @@ public class AuthService {
                 jwtService.generateAccessToken(user),
                 refreshTokenService.createRefreshToken(user),
                 "Bearer",
-                jwtService.getAccessTokenExpiresInSeconds()
-        );
+                jwtService.getAccessTokenExpiresInSeconds());
     }
 
     public AuthResponse refresh(RefreshTokenRequest request) {
@@ -59,7 +56,6 @@ public class AuthService {
                 jwtService.generateAccessToken(rotation.user()),
                 rotation.refreshToken(),
                 "Bearer",
-                jwtService.getAccessTokenExpiresInSeconds()
-        );
+                jwtService.getAccessTokenExpiresInSeconds());
     }
 }

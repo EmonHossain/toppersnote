@@ -32,6 +32,7 @@ public class FileValidationService {
             "exe", "gadget", "hta", "jar", "js", "jse", "lnk", "msi", "msp", "pif",
             "ps1", "scr", "sh", "vb", "vbe", "vbs", "ws", "wsf"
     );
+    private static final Set<String> IMAGE_EXTENSIONS = Set.of("jpg", "jpeg", "png", "gif", "webp");
     private static final byte[] OLE_MAGIC = bytes(0xD0, 0xCF, 0x11, 0xE0, 0xA1, 0xB1, 0x1A, 0xE1);
 
     private final StorageProperties storageProperties;
@@ -41,6 +42,14 @@ public class FileValidationService {
     }
 
     public ValidatedFile validate(MultipartFile file) {
+        return validate(file, ALLOWED_CONTENT_TYPES_BY_EXTENSION.keySet());
+    }
+
+    public ValidatedFile validateImage(MultipartFile file) {
+        return validate(file, IMAGE_EXTENSIONS);
+    }
+
+    private ValidatedFile validate(MultipartFile file, Set<String> allowedExtensions) {
         if (file == null) {
             throw new InvalidFileException("File is required");
         }
@@ -65,6 +74,9 @@ public class FileValidationService {
 
         String extension = getExtension(originalFileName);
         if (SUSPICIOUS_EXTENSIONS.contains(extension)) {
+            throw new InvalidFileException("File type is not allowed");
+        }
+        if (!allowedExtensions.contains(extension)) {
             throw new InvalidFileException("File type is not allowed");
         }
 

@@ -66,6 +66,13 @@ public class GlobalExceptionHandler {
         return buildResponse(HttpStatus.UNAUTHORIZED, "Authentication failed", exception.getMessage(), Map.of());
     }
 
+    @ExceptionHandler(com.sharenote.user.CurrentUserNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleCurrentUserNotFound(
+            com.sharenote.user.CurrentUserNotFoundException exception
+    ) {
+        return buildResponse(HttpStatus.UNAUTHORIZED, "Authentication failed", exception.getMessage(), Map.of());
+    }
+
     @ExceptionHandler(FileStorageException.class)
     public ResponseEntity<ErrorResponse> handleFileStorage(FileStorageException exception) {
         return buildResponse(
