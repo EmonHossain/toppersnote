@@ -114,6 +114,12 @@
   * Keep suggestions separate from comments, replies, and likes
   * Return received suggestions for the current user
 
+* [x] NOTE-012 Notifications
+
+  * Notify users when a new note is added
+  * Notify mentioned users when someone suggests they take a look at a note
+  * Allow users to list notifications and mark them as read
+
 ---
 
 ## ✅ GENERAL RULES

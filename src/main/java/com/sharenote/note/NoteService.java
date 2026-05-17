@@ -1,5 +1,6 @@
 package com.sharenote.note;
 
+import com.sharenote.notification.NotificationPublisher;
 import com.sharenote.note.dto.NoteUploadResponse;
 import com.sharenote.note.dto.NoteResponse;
 import com.sharenote.storage.InvalidFileException;
@@ -27,6 +28,7 @@ public class NoteService {
     private final NoteCommentRepository noteCommentRepository;
     private final NoteUpvoteRepository noteUpvoteRepository;
     private final NoteTakeALookSuggestionRepository takeALookSuggestionRepository;
+    private final NotificationPublisher notificationPublisher;
     private final Clock clock;
 
     public NoteService(
@@ -35,7 +37,8 @@ public class NoteService {
             NoteFileStorage noteFileStorage,
             NoteCommentRepository noteCommentRepository,
             NoteUpvoteRepository noteUpvoteRepository,
-            NoteTakeALookSuggestionRepository takeALookSuggestionRepository
+            NoteTakeALookSuggestionRepository takeALookSuggestionRepository,
+            NotificationPublisher notificationPublisher
     ) {
         this.noteRepository = noteRepository;
         this.userRepository = userRepository;
@@ -43,6 +46,7 @@ public class NoteService {
         this.noteCommentRepository = noteCommentRepository;
         this.noteUpvoteRepository = noteUpvoteRepository;
         this.takeALookSuggestionRepository = takeALookSuggestionRepository;
+        this.notificationPublisher = notificationPublisher;
         this.clock = Clock.systemUTC();
     }
 
@@ -73,7 +77,9 @@ public class NoteService {
                     uploadedBy,
                     Instant.now(clock)
             );
-            return toResponse(noteRepository.save(note));
+            Note savedNote = noteRepository.save(note);
+            notificationPublisher.notifyNewNote(savedNote);
+            return toResponse(savedNote);
         } catch (RuntimeException exception) {
             noteFileStorage.deleteIfExists(storedFile);
             throw exception;

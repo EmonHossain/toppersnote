@@ -4,6 +4,7 @@ import com.sharenote.note.dto.NoteCommentResponse;
 import com.sharenote.note.dto.NoteUpvoteResponse;
 import com.sharenote.note.dto.TakeALookRequest;
 import com.sharenote.note.dto.TakeALookSuggestionResponse;
+import com.sharenote.notification.NotificationPublisher;
 import com.sharenote.user.Role;
 import com.sharenote.user.User;
 import com.sharenote.user.UserRepository;
@@ -48,6 +49,9 @@ class NoteInteractionServiceTest {
     @Mock
     private UserRepository userRepository;
 
+    @Mock
+    private NotificationPublisher notificationPublisher;
+
     private NoteInteractionService noteInteractionService;
 
     @BeforeEach
@@ -57,7 +61,8 @@ class NoteInteractionServiceTest {
                 noteCommentRepository,
                 noteUpvoteRepository,
                 takeALookSuggestionRepository,
-                userRepository
+                userRepository,
+                notificationPublisher
         );
         SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(
                 "amina@example.com",

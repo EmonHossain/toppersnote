@@ -1,5 +1,6 @@
 package com.sharenote.note;
 
+import com.sharenote.notification.NotificationPublisher;
 import com.sharenote.note.dto.NoteCommentResponse;
 import com.sharenote.note.dto.NoteUpvoteResponse;
 import com.sharenote.note.dto.TakeALookRequest;
@@ -33,6 +34,7 @@ public class NoteInteractionService {
     private final NoteUpvoteRepository noteUpvoteRepository;
     private final NoteTakeALookSuggestionRepository takeALookSuggestionRepository;
     private final UserRepository userRepository;
+    private final NotificationPublisher notificationPublisher;
     private final Clock clock;
 
     public NoteInteractionService(
@@ -40,13 +42,15 @@ public class NoteInteractionService {
             NoteCommentRepository noteCommentRepository,
             NoteUpvoteRepository noteUpvoteRepository,
             NoteTakeALookSuggestionRepository takeALookSuggestionRepository,
-            UserRepository userRepository
+            UserRepository userRepository,
+            NotificationPublisher notificationPublisher
     ) {
         this.noteRepository = noteRepository;
         this.noteCommentRepository = noteCommentRepository;
         this.noteUpvoteRepository = noteUpvoteRepository;
         this.takeALookSuggestionRepository = takeALookSuggestionRepository;
         this.userRepository = userRepository;
+        this.notificationPublisher = notificationPublisher;
         this.clock = Clock.systemUTC();
     }
 
@@ -133,19 +137,24 @@ public class NoteInteractionService {
 
         String normalizedMessage = normalizeOptional(request.message(), 500);
         List<TakeALookSuggestionResponse> responses = new ArrayList<>();
+        List<User> newlyMentionedUsers = new ArrayList<>();
         for (Long recipientId : recipientIds) {
             User suggestedTo = recipientsById.get(recipientId);
             NoteTakeALookSuggestion suggestion = takeALookSuggestionRepository
                     .findByNoteIdAndSuggestedByIdAndSuggestedToId(noteId, suggestedBy.getId(), suggestedTo.getId())
-                    .orElseGet(() -> takeALookSuggestionRepository.save(new NoteTakeALookSuggestion(
+                    .orElseGet(() -> {
+                        newlyMentionedUsers.add(suggestedTo);
+                        return takeALookSuggestionRepository.save(new NoteTakeALookSuggestion(
                             note,
                             suggestedBy,
                             suggestedTo,
                             normalizedMessage,
                             Instant.now(clock)
-                    )));
+                        ));
+                    });
             responses.add(toTakeALookResponse(suggestion));
         }
+        notificationPublisher.notifyTakeALook(note, suggestedBy, newlyMentionedUsers, normalizedMessage);
 
         return responses;
     }

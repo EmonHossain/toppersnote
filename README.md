@@ -19,6 +19,7 @@ ShareNote is a Spring Boot backend for authenticated academic note sharing. It s
 - Note comments and one-level replies
 - One-like-per-user note upvotes
 - Take-a-look suggestions for sharing a note with selected users
+- Persistent notifications for new notes and take-a-look mentions
 - DTO-based API responses
 - Global exception handling
 - Unit tests for auth, user, note, and storage services
@@ -359,6 +360,38 @@ Authorization: Bearer <access-token>
 ```
 
 Returns notes other users suggested for the current user to review.
+
+### List Notifications
+
+```http
+GET /notifications?unreadOnly=true
+Authorization: Bearer <access-token>
+```
+
+Returns notifications for the current user. Omit `unreadOnly` to include read notifications.
+
+### Notification Summary
+
+```http
+GET /notifications/summary
+Authorization: Bearer <access-token>
+```
+
+Returns the current user's unread notification count.
+
+### Mark Notification Read
+
+```http
+PATCH /notifications/{notificationId}/read
+Authorization: Bearer <access-token>
+```
+
+### Mark All Notifications Read
+
+```http
+PATCH /notifications/read-all
+Authorization: Bearer <access-token>
+```
 
 ## Security Notes
 

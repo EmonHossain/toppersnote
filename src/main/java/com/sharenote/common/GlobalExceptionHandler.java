@@ -7,6 +7,7 @@ import com.sharenote.note.CurrentUserNotFoundException;
 import com.sharenote.note.InvalidNoteInteractionException;
 import com.sharenote.note.InvalidNoteQueryException;
 import com.sharenote.note.NoteNotFoundException;
+import com.sharenote.notification.NotificationNotFoundException;
 import com.sharenote.storage.FileStorageException;
 import com.sharenote.storage.InvalidFileException;
 import com.sharenote.user.EmailAlreadyExistsException;
@@ -83,6 +84,11 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(UserNotFoundException.class)
     public ResponseEntity<ErrorResponse> handleUserNotFound(UserNotFoundException exception) {
         return buildResponse(HttpStatus.NOT_FOUND, "User not found", exception.getMessage(), Map.of());
+    }
+
+    @ExceptionHandler(NotificationNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleNotificationNotFound(NotificationNotFoundException exception) {
+        return buildResponse(HttpStatus.NOT_FOUND, "Notification not found", exception.getMessage(), Map.of());
     }
 
     @ExceptionHandler(CurrentUserNotFoundException.class)

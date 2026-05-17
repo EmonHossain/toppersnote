@@ -2,6 +2,7 @@ package com.sharenote.note;
 
 import com.sharenote.note.dto.NoteUploadResponse;
 import com.sharenote.note.dto.NoteResponse;
+import com.sharenote.notification.NotificationPublisher;
 import com.sharenote.storage.FileValidationService;
 import com.sharenote.storage.InvalidFileException;
 import com.sharenote.storage.LocalNoteFileStorage;
@@ -58,6 +59,9 @@ class NoteServiceTest {
     @Mock
     private NoteTakeALookSuggestionRepository takeALookSuggestionRepository;
 
+    @Mock
+    private NotificationPublisher notificationPublisher;
+
     private NoteService noteService;
 
     @BeforeEach
@@ -73,7 +77,8 @@ class NoteServiceTest {
                 localNoteFileStorage,
                 noteCommentRepository,
                 noteUpvoteRepository,
-                takeALookSuggestionRepository
+                takeALookSuggestionRepository,
+                notificationPublisher
         );
         SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(
                 "amina@example.com",
@@ -203,7 +208,8 @@ class NoteServiceTest {
                 tinyLimitStorage,
                 noteCommentRepository,
                 noteUpvoteRepository,
-                takeALookSuggestionRepository
+                takeALookSuggestionRepository,
+                notificationPublisher
         );
         MockMultipartFile file = new MockMultipartFile(
                 "file",
