@@ -131,6 +131,24 @@
   * Store note academic context using the uploader's institution and degree program
   * Allow users to navigate degree programs, years, semesters, subjects, and their registered classes
 
+* [x] NOTE-014 Download note
+  * Register users will be able to download note
+  * User will be able to download all notes or selected notes
+
+* [x] NOTE-015 Recently uploaded note
+  * User only able to see list that are related to their course and subject/class.
+    * file name
+    * upload date and time
+    * who uploaded it
+    * course subject name
+
+* [x] NOTE-016 Notes auto removal
+  * Notes related to obsolite course subject/class will automatically get removed after 5 years
+  * issue a notice to the user who uploaded the note one month earlier before auto remove with proper link to the exact note so that user can click on the link and go directly to the note and take nessecery actions.
+
+* [x] NOTE-017 AI capability
+  * user will be able to hook any AI model to play with the note
+  
 ---
 
 ## ADMIN MODULE
