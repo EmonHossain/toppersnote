@@ -25,6 +25,12 @@
   * Endpoint: `/auth/refresh`
   * Rotate refresh tokens on use
 
+* [] AUTH-004  Deep Engineering & Security Upgrades
+
+  * Data De-duplication Engine: If 10 students upload the exact same syllabus PDF or professor's slide deck, storing it 10 times wastes disk space/S3 costs. Implement a hashing check (e.g., SHA-256) on the file content before saving. If the hash exists, point the metadata to the existing file rather than duplicating storage.
+  * Pre-Signed URLs for Cloud Storage: Instead of streaming files through your Spring Boot server (which eats up server memory and bandwidth), have your backend generate a temporary, secure AWS S3 Pre-Signed URL. The user's browser downloads the 10MB file directly from the cloud bucket safely.
+  * Rate Limiting & DDoS Protection: Protect your /auth/ and AI endpoints from abuse. Implement Bucket4j rate limiter to ensure a malicious user can't spam your AI hook or attempt credential stuffing attacks on your login endpoint.
+
 ---
 
 ## 👤 USER MODULE
@@ -169,6 +175,11 @@
 
   * Instead of downloading a whole 10MB PDF blindly, use a library (like PDFBox or a frontend viewer) to generate a watermarked or limited 2-page preview of the note before downloading.
 
+* [] NOTE-015  Calendar & Academic Lifecycles
+
+  * Exam Date Synchronization: Allow users to post exam dates for a specific subject/class. The system can aggregate these dates to send an automated system alert 7 days before the exam: "Your Calculus mid-term is in 7 days! Here are the top 3 upvoted notes from this week to help you prepare."
+  * Semester Archiving: Give users an elegant way to archive their old classes at the end of a semester so their dashboard stays clean, while keeping the data accessible for the next batch of incoming students.
+
 ---
 
 ## ADMIN MODULE
@@ -192,7 +203,7 @@
 
   * Notes related to obsolite course subject/class will automatically get removed after 5 years
   * issue a notice to the user who uploaded the note one month earlier before auto remove with proper link to the exact note so that user can click on the link and go directly to the note and take nessecery actions.
-  * implement a robust scheduling framework like Quartz Scheduler or Spring Batch. Add an admin capability to monitor these upcoming cron jobs and email queues.
+  * implement a robust scheduling framework like Quartz Scheduler. Add an admin capability to monitor these upcoming cron jobs and email queues.
 
 * [] ADMIN-004 System analytics
 
