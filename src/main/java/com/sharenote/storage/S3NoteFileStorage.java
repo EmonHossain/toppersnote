@@ -8,8 +8,13 @@ import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.core.exception.SdkException;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
+import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
+import software.amazon.awssdk.services.s3.presigner.S3Presigner;
+import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
+import software.amazon.awssdk.services.s3.presigner.model.PresignedGetObjectRequest;
 
+import java.time.Duration;
 import java.util.UUID;
 
 @Service
@@ -19,15 +24,18 @@ public class S3NoteFileStorage implements NoteFileStorage {
     private final StorageProperties storageProperties;
     private final FileValidationService fileValidationService;
     private final S3Client s3Client;
+    private final S3Presigner s3Presigner;
 
     public S3NoteFileStorage(
             StorageProperties storageProperties,
             FileValidationService fileValidationService,
-            S3Client s3Client
+            S3Client s3Client,
+            S3Presigner s3Presigner
     ) {
         this.storageProperties = storageProperties;
         this.fileValidationService = fileValidationService;
         this.s3Client = s3Client;
+        this.s3Presigner = s3Presigner;
     }
 
     @Override
@@ -84,5 +92,21 @@ public class S3NoteFileStorage implements NoteFileStorage {
             return storedFileName;
         }
         return prefix.replaceAll("^/+", "").replaceAll("/+$", "") + "/" + storedFileName;
+    }
+
+    @Override
+    public String generateDownloadUrl(String storageKey) {
+        String bucket = requireBucket();
+        String key = buildKey(storageKey);
+        GetObjectRequest getObjectRequest = GetObjectRequest.builder()
+                .bucket(bucket)
+                .key(key)
+                .build();
+        GetObjectPresignRequest presignRequest = GetObjectPresignRequest.builder()
+                .signatureDuration(Duration.ofMinutes(15))
+                .getObjectRequest(getObjectRequest)
+                .build();
+        PresignedGetObjectRequest presigned = s3Presigner.presignGetObject(presignRequest);
+        return presigned.url().toString();
     }
 }

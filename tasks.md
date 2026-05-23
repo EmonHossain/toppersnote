@@ -25,7 +25,7 @@
   * Endpoint: `/auth/refresh`
   * Rotate refresh tokens on use
 
-* [] AUTH-004  Deep Engineering & Security Upgrades
+* [x] AUTH-004  Deep Engineering & Security Upgrades
 
   * Data De-duplication Engine: If 10 students upload the exact same syllabus PDF or professor's slide deck, storing it 10 times wastes disk space/S3 costs. Implement a hashing check (e.g., SHA-256) on the file content before saving. If the hash exists, point the metadata to the existing file rather than duplicating storage.
   * Pre-Signed URLs for Cloud Storage: Instead of streaming files through your Spring Boot server (which eats up server memory and bandwidth), have your backend generate a temporary, secure AWS S3 Pre-Signed URL. The user's browser downloads the 10MB file directly from the cloud bucket safely.

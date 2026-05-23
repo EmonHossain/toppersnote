@@ -75,9 +75,10 @@ class NoteServiceTest {
     @BeforeEach
     void setUp() {
         StorageProperties storageProperties = localStorageProperties(10_485_760);
+        FileValidationService fileValidationService = new FileValidationService(storageProperties);
         LocalNoteFileStorage localNoteFileStorage = new LocalNoteFileStorage(
                 storageProperties,
-                new FileValidationService(storageProperties)
+                fileValidationService
         );
         noteService = new NoteService(
                 noteRepository,
@@ -88,7 +89,8 @@ class NoteServiceTest {
                 takeALookSuggestionRepository,
                 notificationPublisher,
                 academicClassRegistrar,
-                auditPublisher
+                auditPublisher,
+                fileValidationService
         );
         SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(
                 "amina@example.com",
@@ -208,9 +210,10 @@ class NoteServiceTest {
     @Test
     void uploadNoteRejectsFileOverSizeLimit() {
         StorageProperties storageProperties = localStorageProperties(4);
+        FileValidationService fileValidationService = new FileValidationService(storageProperties);
         LocalNoteFileStorage tinyLimitStorage = new LocalNoteFileStorage(
                 storageProperties,
-                new FileValidationService(storageProperties)
+                fileValidationService
         );
         NoteService tinyLimitNoteService = new NoteService(
                 noteRepository,
@@ -221,7 +224,8 @@ class NoteServiceTest {
                 takeALookSuggestionRepository,
                 notificationPublisher,
                 academicClassRegistrar,
-                auditPublisher
+                auditPublisher,
+                fileValidationService
         );
         MockMultipartFile file = new MockMultipartFile(
                 "file",
@@ -391,5 +395,88 @@ class NoteServiceTest {
                 "notes",
                 "us-east-1"
         );
+    }
+
+    @Test
+    void uploadNoteDeDuplicatesFile() throws Exception {
+        User user = user();
+        MockMultipartFile file1 = new MockMultipartFile(
+                "file",
+                "calculus.pdf",
+                "application/pdf",
+                "%PDF-1.7\ncontent".getBytes()
+        );
+        MockMultipartFile file2 = new MockMultipartFile(
+                "file",
+                "math-notes.pdf",
+                "application/pdf",
+                "%PDF-1.7\ncontent".getBytes()
+        );
+
+        when(userRepository.findByEmailIgnoreCase("amina@example.com")).thenReturn(Optional.of(user));
+
+        // Mock repository calls
+        Note existingNote = new Note(
+                "Mathematics", "university", "Computer Science", "3", "2026",
+                "calculus.pdf", "stored-name.pdf", "application/pdf", file1.getSize(),
+                tempDirectory.resolve("stored-name.pdf").toString(), user, Instant.now()
+        );
+        existingNote.setFileHash("abcde12345");
+
+        // First upload (not de-duplicated, return saved note)
+        when(noteRepository.findFirstByFileHash(any())).thenReturn(Optional.empty());
+        when(noteRepository.save(any(Note.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        NoteUploadResponse response1 = noteService.uploadNote(file1, "Mathematics", "3", "2026");
+        assertThat(response1.originalFileName()).isEqualTo("calculus.pdf");
+
+        // Second upload (de-duplicated)
+        when(noteRepository.findFirstByFileHash(any())).thenReturn(Optional.of(existingNote));
+        NoteUploadResponse response2 = noteService.uploadNote(file2, "Mathematics", "3", "2026");
+
+        // Assert it points to same stored file name and size
+        assertThat(response2.originalFileName()).isEqualTo("math-notes.pdf");
+
+        // Verify only 1 file is physically written to disk
+        try (Stream<Path> files = Files.list(tempDirectory)) {
+            assertThat(files.toList()).hasSize(1);
+        }
+    }
+
+    @Test
+    void getDownloadDetailsSuccessForOwner() {
+        User user = user();
+        Note note = new Note(
+                "Mathematics", "university", "Computer Science", "3", "2026",
+                "calculus.pdf", "stored-name.pdf", "application/pdf", 100,
+                tempDirectory.resolve("stored-name.pdf").toString(), user, Instant.now()
+        );
+
+        when(userRepository.findByEmailIgnoreCase("amina@example.com")).thenReturn(Optional.of(user));
+        when(noteRepository.findById(1L)).thenReturn(Optional.of(note));
+
+        NoteService.DownloadDetails details = noteService.getDownloadDetails(1L);
+        assertThat(details.originalFileName()).isEqualTo("calculus.pdf");
+        assertThat(details.isPresignedUrl()).isFalse();
+        assertThat(details.pathOrUrl()).isEqualTo(note.getStoragePath());
+    }
+
+    @Test
+    void getDownloadDetailsFailsForNonPeer() {
+        User user = user("Amina", "Rahman", "amina@example.com");
+        User otherUser = user("John", "Doe", "john@example.com");
+        // Institution does not match user's institution ("university")
+        Note note = new Note(
+                "Mathematics", "different-uni", "Computer Science", "3", "2026",
+                "calculus.pdf", "stored-name.pdf", "application/pdf", 100,
+                tempDirectory.resolve("stored-name.pdf").toString(), otherUser, Instant.now()
+        );
+
+        when(userRepository.findByEmailIgnoreCase("amina@example.com")).thenReturn(Optional.of(user));
+        when(noteRepository.findById(1L)).thenReturn(Optional.of(note));
+
+        assertThatThrownBy(() -> noteService.getDownloadDetails(1L))
+                .isInstanceOf(SecurityException.class)
+                .hasMessage("You do not have permission to access this note");
     }
 }

@@ -8,6 +8,9 @@ import com.sharenote.note.dto.NoteUpvoteResponse;
 import com.sharenote.note.dto.TakeALookRequest;
 import com.sharenote.note.dto.TakeALookSuggestionResponse;
 import jakarta.validation.Valid;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.UrlResource;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -50,6 +53,31 @@ public class NoteController {
             @RequestParam("semester") String semester,
             @RequestParam("year") String year) {
         return ResponseEntity.ok(noteService.getVisibleNotes(subjectClass, semester, year));
+    }
+
+    @GetMapping("/{id}/download")
+    public ResponseEntity<?> download(@PathVariable Long id) {
+        NoteService.DownloadDetails details = noteService.getDownloadDetails(id);
+        if (details.isPresignedUrl()) {
+            return ResponseEntity.status(HttpStatus.FOUND)
+                    .header(HttpHeaders.LOCATION, details.pathOrUrl())
+                    .build();
+        } else {
+            try {
+                java.nio.file.Path path = java.nio.file.Paths.get(details.pathOrUrl());
+                Resource resource = new UrlResource(path.toUri());
+                if (resource.exists() || resource.isReadable()) {
+                    return ResponseEntity.ok()
+                            .contentType(MediaType.parseMediaType(details.contentType()))
+                            .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + details.originalFileName() + "\"")
+                            .body(resource);
+                } else {
+                    throw new com.sharenote.storage.FileStorageException("File not found locally", null);
+                }
+            } catch (java.net.MalformedURLException e) {
+                throw new com.sharenote.storage.FileStorageException("Could not read file", e);
+            }
+        }
     }
 
     @PostMapping("/{noteId}/comments")

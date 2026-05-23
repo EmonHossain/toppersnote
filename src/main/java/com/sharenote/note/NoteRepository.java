@@ -13,4 +13,6 @@ public interface NoteRepository extends JpaRepository<Note, Long> {
             String semester,
             String year
     );
+
+    java.util.Optional<Note> findFirstByFileHash(String fileHash);
 }

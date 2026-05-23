@@ -7,4 +7,8 @@ public interface NoteFileStorage {
     StoredFile store(MultipartFile file);
 
     void deleteIfExists(StoredFile storedFile);
+
+    default String generateDownloadUrl(String storageKey) {
+        return null;
+    }
 }

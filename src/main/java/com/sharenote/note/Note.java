@@ -39,8 +39,11 @@ public class Note {
     @Column(nullable = false, length = 255)
     private String originalFileName;
 
-    @Column(nullable = false, unique = true, length = 255)
+    @Column(nullable = false, length = 255)
     private String storedFileName;
+
+    @Column(length = 64)
+    private String fileHash;
 
     @Column(nullable = false, length = 150)
     private String contentType;
@@ -131,5 +134,21 @@ public class Note {
 
     public Instant getCreatedAt() {
         return createdAt;
+    }
+
+    public String getStoredFileName() {
+        return storedFileName;
+    }
+
+    public String getStoragePath() {
+        return storagePath;
+    }
+
+    public String getFileHash() {
+        return fileHash;
+    }
+
+    public void setFileHash(String fileHash) {
+        this.fileHash = fileHash;
     }
 }
