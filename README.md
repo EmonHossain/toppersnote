@@ -31,7 +31,7 @@ ShareNote is a Spring Boot backend for authenticated academic note sharing. It s
 
 ## Tech Stack
 
-- Java 17
+- Java 25
 - Spring Boot 3.3.5
 - Spring Security
 - Spring Data JPA / Hibernate
@@ -164,7 +164,7 @@ java -jar target/sharenote-0.0.1-SNAPSHOT.jar
 The project includes a multi-stage Docker build:
 
 - Maven build image for compiling the jar
-- Java 17 JRE runtime image
+- Java 25 JRE runtime image
 - Non-root application user
 - Named Docker volume for local note uploads
 
