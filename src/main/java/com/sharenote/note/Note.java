@@ -11,10 +11,16 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+
 import java.time.Instant;
 
 @Entity
 @Table(name = "notes")
+@Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Note {
 
     @Id
@@ -61,9 +67,6 @@ public class Note {
     @Column(nullable = false, updatable = false)
     private Instant createdAt;
 
-    protected Note() {
-    }
-
     public Note(
             String subjectClass,
             String institution,
@@ -90,62 +93,6 @@ public class Note {
         this.storagePath = storagePath;
         this.uploadedBy = uploadedBy;
         this.createdAt = createdAt;
-    }
-
-    public Long getId() {
-        return id;
-    }
-
-    public String getSubjectClass() {
-        return subjectClass;
-    }
-
-    public String getInstitution() {
-        return institution;
-    }
-
-    public String getDegreeProgram() {
-        return degreeProgram;
-    }
-
-    public String getSemester() {
-        return semester;
-    }
-
-    public String getYear() {
-        return year;
-    }
-
-    public String getOriginalFileName() {
-        return originalFileName;
-    }
-
-    public String getContentType() {
-        return contentType;
-    }
-
-    public long getFileSize() {
-        return fileSize;
-    }
-
-    public User getUploadedBy() {
-        return uploadedBy;
-    }
-
-    public Instant getCreatedAt() {
-        return createdAt;
-    }
-
-    public String getStoredFileName() {
-        return storedFileName;
-    }
-
-    public String getStoragePath() {
-        return storagePath;
-    }
-
-    public String getFileHash() {
-        return fileHash;
     }
 
     public void setFileHash(String fileHash) {

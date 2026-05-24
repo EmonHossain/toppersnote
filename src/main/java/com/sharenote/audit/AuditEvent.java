@@ -9,10 +9,16 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+
 import java.time.Instant;
 
 @Entity
 @Table(name = "audit_events")
+@Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class AuditEvent {
 
     @Id
@@ -42,9 +48,6 @@ public class AuditEvent {
     @Column(nullable = false, updatable = false)
     private Instant createdAt;
 
-    protected AuditEvent() {
-    }
-
     public AuditEvent(
             AuditAction action,
             Long actorUserId,
@@ -64,40 +67,5 @@ public class AuditEvent {
         this.metadata = metadata;
         this.createdAt = createdAt;
     }
-
-    public Long getId() {
-        return id;
-    }
-
-    public AuditAction getAction() {
-        return action;
-    }
-
-    public Long getActorUserId() {
-        return actorUserId;
-    }
-
-    public String getActorEmail() {
-        return actorEmail;
-    }
-
-    public String getTargetType() {
-        return targetType;
-    }
-
-    public Long getTargetId() {
-        return targetId;
-    }
-
-    public String getMessage() {
-        return message;
-    }
-
-    public String getMetadata() {
-        return metadata;
-    }
-
-    public Instant getCreatedAt() {
-        return createdAt;
-    }
 }
+

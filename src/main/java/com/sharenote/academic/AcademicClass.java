@@ -8,6 +8,10 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+
 @Entity
 @Table(
         name = "academic_classes",
@@ -16,6 +20,8 @@ import jakarta.persistence.UniqueConstraint;
                 columnNames = {"institution", "degree_program", "year", "semester", "subject_class"}
         )
 )
+@Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class AcademicClass {
 
     @Id
@@ -37,9 +43,6 @@ public class AcademicClass {
     @Column(name = "subject_class", nullable = false, length = 120)
     private String subjectClass;
 
-    protected AcademicClass() {
-    }
-
     public AcademicClass(String institution, String degreeProgram, String year, String semester, String subjectClass) {
         this.institution = institution;
         this.degreeProgram = degreeProgram;
@@ -48,27 +51,4 @@ public class AcademicClass {
         this.subjectClass = subjectClass;
     }
 
-    public Long getId() {
-        return id;
-    }
-
-    public String getInstitution() {
-        return institution;
-    }
-
-    public String getDegreeProgram() {
-        return degreeProgram;
-    }
-
-    public String getYear() {
-        return year;
-    }
-
-    public String getSemester() {
-        return semester;
-    }
-
-    public String getSubjectClass() {
-        return subjectClass;
-    }
 }

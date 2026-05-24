@@ -12,6 +12,10 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+
 import java.time.Instant;
 
 @Entity
@@ -22,6 +26,8 @@ import java.time.Instant;
                 columnNames = {"note_id", "suggested_by_user_id", "suggested_to_user_id"}
         )
 )
+@Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class NoteTakeALookSuggestion {
 
     @Id
@@ -46,9 +52,6 @@ public class NoteTakeALookSuggestion {
     @Column(nullable = false, updatable = false)
     private Instant createdAt;
 
-    protected NoteTakeALookSuggestion() {
-    }
-
     public NoteTakeALookSuggestion(Note note, User suggestedBy, User suggestedTo, String message, Instant createdAt) {
         this.note = note;
         this.suggestedBy = suggestedBy;
@@ -57,27 +60,4 @@ public class NoteTakeALookSuggestion {
         this.createdAt = createdAt;
     }
 
-    public Long getId() {
-        return id;
-    }
-
-    public Note getNote() {
-        return note;
-    }
-
-    public User getSuggestedBy() {
-        return suggestedBy;
-    }
-
-    public User getSuggestedTo() {
-        return suggestedTo;
-    }
-
-    public String getMessage() {
-        return message;
-    }
-
-    public Instant getCreatedAt() {
-        return createdAt;
-    }
 }

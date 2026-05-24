@@ -12,6 +12,10 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+
 import java.time.Instant;
 
 @Entity
@@ -19,6 +23,8 @@ import java.time.Instant;
         name = "note_upvotes",
         uniqueConstraints = @UniqueConstraint(name = "uk_note_upvote_user", columnNames = {"note_id", "user_id"})
 )
+@Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class NoteUpvote {
 
     @Id
@@ -36,28 +42,10 @@ public class NoteUpvote {
     @Column(nullable = false, updatable = false)
     private Instant createdAt;
 
-    protected NoteUpvote() {
-    }
-
     public NoteUpvote(Note note, User user, Instant createdAt) {
         this.note = note;
         this.user = user;
         this.createdAt = createdAt;
     }
 
-    public Long getId() {
-        return id;
-    }
-
-    public Note getNote() {
-        return note;
-    }
-
-    public User getUser() {
-        return user;
-    }
-
-    public Instant getCreatedAt() {
-        return createdAt;
-    }
 }

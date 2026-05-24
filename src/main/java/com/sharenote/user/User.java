@@ -13,12 +13,18 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.Table;
 
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+
 import java.time.Instant;
 import java.util.HashSet;
 import java.util.Set;
 
 @Entity
 @Table(name = "users")
+@Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class User {
 
     @Id
@@ -98,9 +104,6 @@ public class User {
     @Column(name = "role", nullable = false)
     private Set<Role> roles = new HashSet<>();
 
-    protected User() {
-    }
-
     public User(String email, String password, Set<Role> roles) {
         this.email = email;
         this.password = password;
@@ -137,86 +140,6 @@ public class User {
         this.roles = roles;
     }
 
-    public Long getId() {
-        return id;
-    }
-
-    public String getEmail() {
-        return email;
-    }
-
-    public String getPassword() {
-        return password;
-    }
-
-    public String getFirstName() {
-        return firstName;
-    }
-
-    public String getMiddleName() {
-        return middleName;
-    }
-
-    public String getLastName() {
-        return lastName;
-    }
-
-    public String getInstitution() {
-        return institution;
-    }
-
-    public String getDegreeProgram() {
-        return degreeProgram;
-    }
-
-    public String getCurrentSemesterOrYear() {
-        return currentSemesterOrYear;
-    }
-
-    public String getCurrentYear() {
-        return currentYear;
-    }
-
-    public String getCurrentSemester() {
-        return currentSemester;
-    }
-
-    public String getPhoneNumber() {
-        return phoneNumber;
-    }
-
-    public String getCountry() {
-        return country;
-    }
-
-    public Set<Role> getRoles() {
-        return roles;
-    }
-
-    public String getProfilePictureOriginalFileName() {
-        return profilePictureOriginalFileName;
-    }
-
-    public String getProfilePictureStoredFileName() {
-        return profilePictureStoredFileName;
-    }
-
-    public String getProfilePictureContentType() {
-        return profilePictureContentType;
-    }
-
-    public Long getProfilePictureFileSize() {
-        return profilePictureFileSize;
-    }
-
-    public String getProfilePictureStorageKey() {
-        return profilePictureStorageKey;
-    }
-
-    public String getProfilePictureStorageLocation() {
-        return profilePictureStorageLocation;
-    }
-
     public boolean hasProfilePicture() {
         return profilePictureStorageLocation != null;
     }
@@ -235,26 +158,6 @@ public class User {
         this.profilePictureFileSize = fileSize;
         this.profilePictureStorageKey = storageKey;
         this.profilePictureStorageLocation = storageLocation;
-    }
-
-    public boolean isPermanentlyBanned() {
-        return permanentlyBanned;
-    }
-
-    public Instant getBannedUntil() {
-        return bannedUntil;
-    }
-
-    public String getBanNotice() {
-        return banNotice;
-    }
-
-    public String getBanReason() {
-        return banReason;
-    }
-
-    public int getPolicyViolationCount() {
-        return policyViolationCount;
     }
 
     public boolean isCurrentlyBanned(Instant now) {

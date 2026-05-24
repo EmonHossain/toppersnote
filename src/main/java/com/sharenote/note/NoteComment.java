@@ -11,10 +11,16 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+
 import java.time.Instant;
 
 @Entity
 @Table(name = "note_comments")
+@Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class NoteComment {
 
     @Id
@@ -39,9 +45,6 @@ public class NoteComment {
     @Column(nullable = false, updatable = false)
     private Instant createdAt;
 
-    protected NoteComment() {
-    }
-
     public NoteComment(Note note, User author, NoteComment parentComment, String content, Instant createdAt) {
         this.note = note;
         this.author = author;
@@ -50,27 +53,4 @@ public class NoteComment {
         this.createdAt = createdAt;
     }
 
-    public Long getId() {
-        return id;
-    }
-
-    public Note getNote() {
-        return note;
-    }
-
-    public User getAuthor() {
-        return author;
-    }
-
-    public NoteComment getParentComment() {
-        return parentComment;
-    }
-
-    public String getContent() {
-        return content;
-    }
-
-    public Instant getCreatedAt() {
-        return createdAt;
-    }
 }

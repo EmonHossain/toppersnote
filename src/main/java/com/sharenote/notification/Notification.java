@@ -14,10 +14,16 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+
 import java.time.Instant;
 
 @Entity
 @Table(name = "notifications")
+@Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Notification {
 
     @Id
@@ -51,9 +57,6 @@ public class Notification {
 
     private Instant readAt;
 
-    protected Notification() {
-    }
-
     public Notification(
             User recipient,
             User actor,
@@ -70,42 +73,6 @@ public class Notification {
         this.title = title;
         this.message = message;
         this.createdAt = createdAt;
-    }
-
-    public Long getId() {
-        return id;
-    }
-
-    public User getRecipient() {
-        return recipient;
-    }
-
-    public User getActor() {
-        return actor;
-    }
-
-    public Note getNote() {
-        return note;
-    }
-
-    public NotificationType getType() {
-        return type;
-    }
-
-    public String getTitle() {
-        return title;
-    }
-
-    public String getMessage() {
-        return message;
-    }
-
-    public Instant getCreatedAt() {
-        return createdAt;
-    }
-
-    public Instant getReadAt() {
-        return readAt;
     }
 
     public boolean isRead() {

@@ -11,10 +11,16 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+
 import java.time.Instant;
 
 @Entity
 @Table(name = "refresh_tokens")
+@Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class RefreshToken {
 
     @Id
@@ -37,9 +43,6 @@ public class RefreshToken {
     @Column(nullable = false, updatable = false)
     private Instant createdAt;
 
-    protected RefreshToken() {
-    }
-
     public RefreshToken(String tokenHash, User user, Instant expiresAt, Instant createdAt) {
         this.tokenHash = tokenHash;
         this.user = user;
@@ -48,16 +51,8 @@ public class RefreshToken {
         this.revoked = false;
     }
 
-    public User getUser() {
-        return user;
-    }
-
     public boolean isExpired(Instant now) {
         return expiresAt.isBefore(now);
-    }
-
-    public boolean isRevoked() {
-        return revoked;
     }
 
     public void revoke() {
