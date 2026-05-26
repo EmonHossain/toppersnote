@@ -41,6 +41,8 @@ Follow this strict workflow:
 
    * secure implementation (JWT, validation, file safety, etc.)
    * clean, maintainable, production-ready code
+   * logging (use Lombok for log)
+   * Use Lombok whenever possible to reduce boilerplate code
 
 ---
 

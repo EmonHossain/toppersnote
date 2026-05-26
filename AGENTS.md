@@ -7,6 +7,7 @@ You are responsible for implementing a Spring Boot backend system with:
 * JWT-based stateless authentication
 * User management
 * File upload and access control
+* proper logging with Slf4j ecs format
 
 Follow `tasks.md` strictly.
 
@@ -72,6 +73,7 @@ Follow `tasks.md` strictly.
 * Add comments where necessary
 * Handle exceptions properly
 * Avoid duplication
+* Add log where necessary
 
 ---
 
