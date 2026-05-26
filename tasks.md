@@ -64,11 +64,11 @@
     * generate refresh token
   * Return tokens in response
 
-* [] USER-006 User Dark Mode Preference: 
+* [x] USER-006 User Dark Mode Preference: 
 
   * Save UI theme preferences in the USER schema.
 
-* [] USER-007 User Email Verification
+* [x] USER-007 User Email Verification
 
   * A step between registration and active login where a user must verify their university email (.edu or institution domain) to unlock upload/download privileges.
 
@@ -145,12 +145,12 @@
   * Store note academic context using the uploader's institution and degree program
   * Allow users to navigate degree programs, years, semesters, subjects, and their registered classes
 
-* [] NOTE-09 Download note
+* [x] NOTE-09 Download note
 
   * Register users will be able to download note
   * User will be able to download all notes or selected notes
 
-* [] NOTE-010 Recently uploaded note
+* [x] NOTE-010 Recently uploaded note
 
   * User only able to see list that are related to their course and subject/class.
     * file name
@@ -158,7 +158,7 @@
     * who uploaded it
     * course subject name
 
-* [] NOTE-011 AI capability
+* [x] NOTE-011 AI capability
 
   * user will be able to hook any AI model to play with the note
 
