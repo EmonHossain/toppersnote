@@ -1,5 +1,6 @@
 package com.sharenote.storage;
 
+import com.sharenote.note.Note;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -76,6 +77,19 @@ public class S3NoteFileStorage implements NoteFileStorage {
                     .build());
         } catch (SdkException ignored) {
             // Best-effort cleanup after a metadata persistence failure.
+        }
+    }
+
+    @Override
+    public byte[] read(Note note) {
+        try {
+            return s3Client.getObjectAsBytes(GetObjectRequest.builder()
+                            .bucket(requireBucket())
+                            .key(buildKey(note.getStoredFileName()))
+                            .build())
+                    .asByteArray();
+        } catch (SdkException exception) {
+            throw new FileStorageException("Could not read stored note file", exception);
         }
     }
 
