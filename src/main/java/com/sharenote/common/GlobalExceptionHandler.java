@@ -87,6 +87,21 @@ public class GlobalExceptionHandler {
         return buildResponse(HttpStatus.FORBIDDEN, "Email not verified", exception.getMessage(), Map.of());
     }
 
+    @ExceptionHandler(AiRequestValidationException.class)
+    public ResponseEntity<ErrorResponse> handleAiRequestValidation(AiRequestValidationException exception) {
+        return buildResponse(HttpStatus.BAD_REQUEST, "Invalid AI request", exception.getMessage(), Map.of());
+    }
+
+    @ExceptionHandler(AiProviderException.class)
+    public ResponseEntity<ErrorResponse> handleAiProvider(AiProviderException exception) {
+        return buildResponse(HttpStatus.BAD_GATEWAY, "AI provider error", exception.getMessage(), Map.of());
+    }
+
+    @ExceptionHandler(SecurityException.class)
+    public ResponseEntity<ErrorResponse> handleSecurityException(SecurityException exception) {
+        return buildResponse(HttpStatus.FORBIDDEN, "Access denied", exception.getMessage(), Map.of());
+    }
+
     @ExceptionHandler(InvalidFileException.class)
     public ResponseEntity<ErrorResponse> handleInvalidFile(InvalidFileException exception) {
         return buildResponse(HttpStatus.BAD_REQUEST, "Invalid upload", exception.getMessage(), Map.of());
