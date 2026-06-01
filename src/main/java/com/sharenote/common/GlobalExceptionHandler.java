@@ -137,6 +137,27 @@ public class GlobalExceptionHandler {
         return buildResponse(HttpStatus.NOT_FOUND, "User not found", exception.getMessage(), Map.of());
     }
 
+    @ExceptionHandler(ProposalNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleProposalNotFound(ProposalNotFoundException exception) {
+        return buildResponse(HttpStatus.NOT_FOUND, "Proposal not found", exception.getMessage(), Map.of());
+    }
+
+    @ExceptionHandler(StudyGroupNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleStudyGroupNotFound(StudyGroupNotFoundException exception) {
+        return buildResponse(HttpStatus.NOT_FOUND, "Study group not found", exception.getMessage(), Map.of());
+    }
+
+    @ExceptionHandler(StudyGroupNotebookNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleStudyGroupNotebookNotFound(
+            StudyGroupNotebookNotFoundException exception) {
+        return buildResponse(HttpStatus.NOT_FOUND, "Notebook not found", exception.getMessage(), Map.of());
+    }
+
+    @ExceptionHandler(StudyGroupAccessDeniedException.class)
+    public ResponseEntity<ErrorResponse> handleStudyGroupAccessDenied(StudyGroupAccessDeniedException exception) {
+        return buildResponse(HttpStatus.FORBIDDEN, "Access denied", exception.getMessage(), Map.of());
+    }
+
     @ExceptionHandler(NotificationNotFoundException.class)
     public ResponseEntity<ErrorResponse> handleNotificationNotFound(NotificationNotFoundException exception) {
         return buildResponse(HttpStatus.NOT_FOUND, "Notification not found", exception.getMessage(), Map.of());
