@@ -1,6 +1,8 @@
 package com.sharenote.common;
 
 import com.sharenote.academic.InvalidAcademicNavigationException;
+import com.sharenote.ai.AiProviderException;
+import com.sharenote.ai.AiRequestValidationException;
 import com.sharenote.note.CommentNotFoundException;
 import com.sharenote.auth.InvalidCredentialsException;
 import com.sharenote.auth.InvalidRefreshTokenException;
@@ -8,12 +10,19 @@ import com.sharenote.note.CurrentUserNotFoundException;
 import com.sharenote.note.InvalidNoteInteractionException;
 import com.sharenote.note.InvalidNoteQueryException;
 import com.sharenote.note.NoteNotFoundException;
+import com.sharenote.note.ProposalNotFoundException;
+import com.sharenote.studygroup.StudyGroupAccessDeniedException;
+import com.sharenote.studygroup.StudyGroupNotebookNotFoundException;
+import com.sharenote.studygroup.StudyGroupNotFoundException;
 import com.sharenote.notification.NotificationNotFoundException;
 import com.sharenote.storage.FileStorageException;
 import com.sharenote.storage.InvalidFileException;
 import com.sharenote.user.AccountBannedException;
 import com.sharenote.user.EmailAlreadyExistsException;
 import com.sharenote.user.UserNotFoundException;
+import com.sharenote.verification.EmailNotVerifiedException;
+import com.sharenote.verification.InvalidEmailVerificationTokenException;
+import com.sharenote.verification.InvalidInstitutionEmailException;
 import io.jsonwebtoken.security.WeakKeyException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -31,16 +40,14 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorResponse> handleValidation(MethodArgumentNotValidException exception) {
         Map<String, String> fieldErrors = new LinkedHashMap<>();
-        exception.getBindingResult().getFieldErrors().forEach(error ->
-                fieldErrors.put(error.getField(), error.getDefaultMessage())
-        );
+        exception.getBindingResult().getFieldErrors()
+                .forEach(error -> fieldErrors.put(error.getField(), error.getDefaultMessage()));
 
         return buildResponse(
                 HttpStatus.BAD_REQUEST,
                 "Validation failed",
                 "One or more fields are invalid",
-                fieldErrors
-        );
+                fieldErrors);
     }
 
     @ExceptionHandler(InvalidCredentialsException.class)
@@ -61,6 +68,23 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(EmailAlreadyExistsException.class)
     public ResponseEntity<ErrorResponse> handleEmailAlreadyExists(EmailAlreadyExistsException exception) {
         return buildResponse(HttpStatus.CONFLICT, "Email already exists", exception.getMessage(), Map.of());
+    }
+
+    @ExceptionHandler(InvalidInstitutionEmailException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidInstitutionEmail(InvalidInstitutionEmailException exception) {
+        return buildResponse(HttpStatus.BAD_REQUEST, "Invalid email domain", exception.getMessage(), Map.of());
+    }
+
+    @ExceptionHandler(InvalidEmailVerificationTokenException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidEmailVerificationToken(
+            InvalidEmailVerificationTokenException exception) {
+        return buildResponse(HttpStatus.BAD_REQUEST, "Invalid email verification token", exception.getMessage(),
+                Map.of());
+    }
+
+    @ExceptionHandler(EmailNotVerifiedException.class)
+    public ResponseEntity<ErrorResponse> handleEmailNotVerified(EmailNotVerifiedException exception) {
+        return buildResponse(HttpStatus.FORBIDDEN, "Email not verified", exception.getMessage(), Map.of());
     }
 
     @ExceptionHandler(InvalidFileException.class)
@@ -110,8 +134,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(com.sharenote.user.CurrentUserNotFoundException.class)
     public ResponseEntity<ErrorResponse> handleCurrentUserNotFound(
-            com.sharenote.user.CurrentUserNotFoundException exception
-    ) {
+            com.sharenote.user.CurrentUserNotFoundException exception) {
         return buildResponse(HttpStatus.UNAUTHORIZED, "Authentication failed", exception.getMessage(), Map.of());
     }
 
@@ -121,8 +144,7 @@ public class GlobalExceptionHandler {
                 HttpStatus.INTERNAL_SERVER_ERROR,
                 "File storage error",
                 "Could not store uploaded file",
-                Map.of()
-        );
+                Map.of());
     }
 
     @ExceptionHandler(WeakKeyException.class)
@@ -131,22 +153,19 @@ public class GlobalExceptionHandler {
                 HttpStatus.INTERNAL_SERVER_ERROR,
                 "JWT configuration error",
                 "JWT secret must be at least 256 bits for HS256",
-                Map.of()
-        );
+                Map.of());
     }
 
     private ResponseEntity<ErrorResponse> buildResponse(
             HttpStatus status,
             String error,
             String message,
-            Map<String, String> validationErrors
-    ) {
+            Map<String, String> validationErrors) {
         return ResponseEntity.status(status).body(new ErrorResponse(
                 Instant.now(),
                 status.value(),
                 error,
                 message,
-                validationErrors
-        ));
+                validationErrors));
     }
 }
