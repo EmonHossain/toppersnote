@@ -2,7 +2,6 @@ package com.sharenote.logging;
 
 import jakarta.servlet.Filter;
 import jakarta.servlet.FilterChain;
-import jakarta.servlet.FilterConfig;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.ServletRequest;
 import jakarta.servlet.ServletResponse;
@@ -45,7 +44,7 @@ public class ContextLoggingFilter implements Filter {
 
         String clientIp = httpRequest.getRemoteAddr();
         try {
-            // 2. Put context data into MDC for logging
+            //Put context data into MDC for logging
             MDC.put(loggingProperties.traceIdKey(), traceId);
             MDC.put(loggingProperties.tenantIdKey(), tenantId);
             MDC.put(loggingProperties.userIdKey(), userId);
