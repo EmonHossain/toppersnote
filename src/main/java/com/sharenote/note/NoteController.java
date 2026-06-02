@@ -2,9 +2,15 @@ package com.sharenote.note;
 
 import com.sharenote.note.dto.CreateCommentRequest;
 import com.sharenote.note.dto.NoteCommentResponse;
+import com.sharenote.note.dto.NoteDownloadBatchResponse;
 import com.sharenote.note.dto.NoteResponse;
+import com.sharenote.note.dto.NoteVersionResponse;
+import com.sharenote.note.dto.NoteEditProposalResponse;
+import com.sharenote.note.dto.RejectProposalRequest;
 import com.sharenote.note.dto.NoteUploadResponse;
 import com.sharenote.note.dto.NoteUpvoteResponse;
+import com.sharenote.note.dto.RecentlyUploadedNoteResponse;
+import com.sharenote.note.dto.SelectedNotesDownloadRequest;
 import com.sharenote.note.dto.TakeALookRequest;
 import com.sharenote.note.dto.TakeALookSuggestionResponse;
 import jakarta.validation.Valid;
@@ -55,6 +61,13 @@ public class NoteController {
         return ResponseEntity.ok(noteService.getVisibleNotes(subjectClass, semester, year));
     }
 
+    @GetMapping("/recent")
+    public ResponseEntity<List<RecentlyUploadedNoteResponse>> getRecentlyUploadedNotes(
+            @RequestParam("subjectClass") String subjectClass
+    ) {
+        return ResponseEntity.ok(noteService.getRecentlyUploadedNotes(subjectClass));
+    }
+
     @GetMapping("/{id}/download")
     public ResponseEntity<?> download(@PathVariable Long id) {
         NoteService.DownloadDetails details = noteService.getDownloadDetails(id);
@@ -78,6 +91,22 @@ public class NoteController {
                 throw new com.sharenote.storage.FileStorageException("Could not read file", e);
             }
         }
+    }
+
+    @PostMapping("/downloads/selected")
+    public ResponseEntity<NoteDownloadBatchResponse> getSelectedDownloadDetails(
+            @Valid @RequestBody SelectedNotesDownloadRequest request
+    ) {
+        return ResponseEntity.ok(noteService.getSelectedDownloadDetails(request));
+    }
+
+    @GetMapping("/downloads/all")
+    public ResponseEntity<NoteDownloadBatchResponse> getAllVisibleDownloadDetails(
+            @RequestParam("subjectClass") String subjectClass,
+            @RequestParam("semester") String semester,
+            @RequestParam("year") String year
+    ) {
+        return ResponseEntity.ok(noteService.getAllVisibleDownloadDetails(subjectClass, semester, year));
     }
 
     @PostMapping("/{noteId}/comments")
@@ -118,5 +147,48 @@ public class NoteController {
     @GetMapping("/take-a-look")
     public ResponseEntity<List<TakeALookSuggestionResponse>> getMyTakeALookSuggestions() {
         return ResponseEntity.ok(noteInteractionService.getMyTakeALookSuggestions());
+    }
+
+    @PostMapping(value = "/{noteId}/versions", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<NoteResponse> uploadVersion(
+            @PathVariable Long noteId,
+            @RequestParam("file") MultipartFile file,
+            @RequestParam("changeSummary") String changeSummary) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(noteService.uploadVersionDirectly(noteId, file, changeSummary));
+    }
+
+    @GetMapping("/{noteId}/versions")
+    public ResponseEntity<List<NoteVersionResponse>> listVersions(@PathVariable Long noteId) {
+        return ResponseEntity.ok(noteService.listNoteVersions(noteId));
+    }
+
+    @PostMapping(value = "/{noteId}/proposals", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<NoteEditProposalResponse> createProposal(
+            @PathVariable Long noteId,
+            @RequestParam("file") MultipartFile file,
+            @RequestParam("changeSummary") String changeSummary) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(noteService.createProposal(noteId, file, changeSummary));
+    }
+
+    @GetMapping("/{noteId}/proposals")
+    public ResponseEntity<List<NoteEditProposalResponse>> listProposals(@PathVariable Long noteId) {
+        return ResponseEntity.ok(noteService.listProposals(noteId));
+    }
+
+    @PostMapping("/{noteId}/proposals/{proposalId}/approve")
+    public ResponseEntity<NoteResponse> approveProposal(
+            @PathVariable Long noteId,
+            @PathVariable Long proposalId) {
+        return ResponseEntity.ok(noteService.approveProposal(noteId, proposalId));
+    }
+
+    @PostMapping("/{noteId}/proposals/{proposalId}/reject")
+    public ResponseEntity<NoteEditProposalResponse> rejectProposal(
+            @PathVariable Long noteId,
+            @PathVariable Long proposalId,
+            @Valid @RequestBody RejectProposalRequest request) {
+        return ResponseEntity.ok(noteService.rejectProposal(noteId, proposalId, request));
     }
 }

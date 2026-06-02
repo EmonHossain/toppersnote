@@ -67,6 +67,19 @@ public class Note {
     @Column(nullable = false, updatable = false)
     private Instant createdAt;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "parent_note_id")
+    private Note parentNote;
+
+    @Column(nullable = false)
+    private int versionNumber = 1;
+
+    @Column(length = 1000)
+    private String changeSummary;
+
+    @Column(nullable = false)
+    private boolean latest = true;
+
     public Note(
             String subjectClass,
             String institution,
@@ -97,5 +110,21 @@ public class Note {
 
     public void setFileHash(String fileHash) {
         this.fileHash = fileHash;
+    }
+
+    public void setLatest(boolean latest) {
+        this.latest = latest;
+    }
+
+    public void setParentNote(Note parentNote) {
+        this.parentNote = parentNote;
+    }
+
+    public void setVersionNumber(int versionNumber) {
+        this.versionNumber = versionNumber;
+    }
+
+    public void setChangeSummary(String changeSummary) {
+        this.changeSummary = changeSummary;
     }
 }
