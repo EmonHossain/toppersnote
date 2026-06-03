@@ -34,6 +34,7 @@ import java.time.Instant;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -67,8 +68,7 @@ public class NoteService {
             AcademicClassRegistrar academicClassRegistrar,
             AuditPublisher auditPublisher,
             FileValidationService fileValidationService,
-            NoteEditProposalRepository noteEditProposalRepository
-    ) {
+            NoteEditProposalRepository noteEditProposalRepository) {
         this.noteRepository = noteRepository;
         this.userRepository = userRepository;
         this.noteFileStorage = noteFileStorage;
@@ -83,13 +83,24 @@ public class NoteService {
         this.clock = Clock.systemUTC();
     }
 
+    // Uploads a non-anonymous note when callers do not provide the optional toggle.
+    public NoteUploadResponse uploadNote(
+            MultipartFile file,
+            String subjectClass,
+            String semester,
+            String year) {
+        return uploadNote(file, subjectClass, semester, year, false);
+    }
+
+    // Uploads a note and optionally masks the uploader identity in public
+    // responses.
     @Transactional
     public NoteUploadResponse uploadNote(
             MultipartFile file,
             String subjectClass,
             String semester,
-            String year
-    ) {
+            String year,
+            boolean anonymousUpload) {
         String normalizedSubjectClass = requireText(subjectClass, "Subject/class is required");
         String normalizedSemester = requireText(semester, "Semester is required");
         String normalizedYear = requireText(year, "Year is required");
@@ -129,8 +140,7 @@ public class NoteService {
                     existing.getContentType(),
                     existing.getFileSize(),
                     existing.getStoredFileName(),
-                    existing.getStoragePath()
-            );
+                    existing.getStoragePath());
         } else {
             storedFile = noteFileStorage.store(file);
             isNewFile = true;
@@ -149,10 +159,10 @@ public class NoteService {
                     storedFile.fileSize(),
                     storedFile.storageLocation(),
                     uploadedBy,
-                    Instant.now(clock)
-            );
+                    Instant.now(clock));
             note.setFileHash(fileHash);
-            Note savedNote = noteRepository.save(note);
+            note.setAnonymousUpload(anonymousUpload);
+            Note savedNote = noteRepository.saveNewNoteWithaccessibleId(note);
             academicClassRegistrar.registerMatchingUsers(savedNote);
             notificationPublisher.notifyNewNote(savedNote);
             auditPublisher.publish(
@@ -161,8 +171,8 @@ public class NoteService {
                     "NOTE",
                     savedNote.getId(),
                     "Note uploaded",
-                    "subjectClass=" + savedNote.getSubjectClass()
-            );
+                    "subjectClass=" + savedNote.getSubjectClass() + ",anonymousUpload="
+                            + savedNote.isAnonymousUpload());
             return toResponse(savedNote);
         } catch (RuntimeException exception) {
             if (isNewFile && storedFile != null) {
@@ -181,13 +191,12 @@ public class NoteService {
         String normalizedYear = requireQueryText(year, "Year is required");
 
         return noteRepository
-                .findByInstitutionIgnoreCaseAndDegreeProgramIgnoreCaseAndSubjectClassIgnoreCaseAndSemesterIgnoreCaseAndYearIgnoreCaseAndLatestTrueOrderByCreatedAtDesc(
+                .findVisibleNotes(
                         currentUser.getInstitution(),
                         currentUser.getDegreeProgram(),
                         normalizedSubjectClass,
                         normalizedSemester,
-                        normalizedYear
-                )
+                        normalizedYear)
                 .stream()
                 .map(this::toNoteResponse)
                 .toList();
@@ -199,13 +208,12 @@ public class NoteService {
         String normalizedSubjectClass = requireQueryText(subjectClass, "Subject/class is required");
 
         List<RecentlyUploadedNoteResponse> responses = noteRepository
-                .findTop20ByInstitutionIgnoreCaseAndDegreeProgramIgnoreCaseAndSubjectClassIgnoreCaseAndSemesterIgnoreCaseAndYearIgnoreCaseAndLatestTrueOrderByCreatedAtDesc(
+                .findTop20Notes(
                         currentUser.getInstitution(),
                         currentUser.getDegreeProgram(),
                         normalizedSubjectClass,
                         currentUser.getCurrentSemester(),
-                        currentUser.getCurrentYear()
-                )
+                        currentUser.getCurrentYear())
                 .stream()
                 .map(this::toRecentlyUploadedNoteResponse)
                 .toList();
@@ -215,8 +223,7 @@ public class NoteService {
                 currentUser.getId(),
                 currentUser.getEmail(),
                 normalizedSubjectClass,
-                responses.size()
-        );
+                responses.size());
         return responses;
     }
 
@@ -255,13 +262,12 @@ public class NoteService {
                 note.getOriginalFileName(),
                 note.getContentType(),
                 note.getFileSize(),
-                note.getUploadedBy().getId(),
-                note.getCreatedAt()
-        );
+                publicUploaderId(note),
+                note.isAnonymousUpload(),
+                note.getCreatedAt());
     }
 
     private NoteResponse toNoteResponse(Note note) {
-        User uploadedBy = note.getUploadedBy();
         return new NoteResponse(
                 note.getId(),
                 note.getSubjectClass(),
@@ -272,17 +278,27 @@ public class NoteService {
                 note.getOriginalFileName(),
                 note.getContentType(),
                 note.getFileSize(),
-                uploadedBy.getId(),
-                formatName(uploadedBy),
+                publicUploaderId(note),
+                publicUploaderName(note),
+                note.isAnonymousUpload(),
                 noteCommentRepository.countByNoteId(note.getId()),
                 noteUpvoteRepository.countByNoteId(note.getId()),
                 takeALookSuggestionRepository.countByNoteId(note.getId()),
-                note.getCreatedAt()
-        );
+                note.getCreatedAt());
     }
 
     private String formatName(User user) {
         return (user.getFirstName() + " " + user.getLastName()).trim();
+    }
+
+    // Returns the public uploader id, masking anonymous notes from classmates.
+    private Long publicUploaderId(Note note) {
+        return note.isAnonymousUpload() ? null : note.getUploadedBy().getId();
+    }
+
+    // Returns the public uploader name, masking anonymous notes from classmates.
+    private String publicUploaderName(Note note) {
+        return note.isAnonymousUpload() ? "Anonymous" : formatName(note.getUploadedBy());
     }
 
     @Transactional(readOnly = true)
@@ -308,7 +324,7 @@ public class NoteService {
         requireVerifiedEmail(currentUser);
         List<Long> noteIds = requireNoteIds(request);
 
-        List<Note> notes = noteRepository.findByIdIn(noteIds);
+        List<Note> notes = noteRepository.findByIds(noteIds);
         Map<Long, Note> notesById = notes.stream()
                 .collect(Collectors.toMap(Note::getId, Function.identity()));
 
@@ -330,14 +346,12 @@ public class NoteService {
                 "NOTE",
                 null,
                 "Selected note downloads prepared",
-                "count=" + items.size()
-        );
+                "count=" + items.size());
         log.info(
                 "Selected note download prepared userId={} userEmail={} count={}",
                 currentUser.getId(),
                 currentUser.getEmail(),
-                items.size()
-        );
+                items.size());
         return new NoteDownloadBatchResponse(items.size(), items);
     }
 
@@ -351,13 +365,12 @@ public class NoteService {
         String normalizedYear = requireQueryText(year, "Year is required");
 
         List<NoteDownloadItemResponse> items = noteRepository
-                .findByInstitutionIgnoreCaseAndDegreeProgramIgnoreCaseAndSubjectClassIgnoreCaseAndSemesterIgnoreCaseAndYearIgnoreCaseOrderByCreatedAtDesc(
+                .findVisibleNotes(
                         currentUser.getInstitution(),
                         currentUser.getDegreeProgram(),
                         normalizedSubjectClass,
                         normalizedSemester,
-                        normalizedYear
-                )
+                        normalizedYear)
                 .stream()
                 .peek(note -> checkNoteAccess(note, currentUser))
                 .map(this::toDownloadItemResponse)
@@ -369,8 +382,7 @@ public class NoteService {
                 "NOTE",
                 null,
                 "All visible note downloads prepared",
-                "subjectClass=" + normalizedSubjectClass + ",count=" + items.size()
-        );
+                "subjectClass=" + normalizedSubjectClass + ",count=" + items.size());
         log.info(
                 "All visible note downloads prepared userId={} userEmail={} subjectClass={} semester={} year={} count={}",
                 currentUser.getId(),
@@ -378,8 +390,7 @@ public class NoteService {
                 normalizedSubjectClass,
                 normalizedSemester,
                 normalizedYear,
-                items.size()
-        );
+                items.size());
         return new NoteDownloadBatchResponse(items.size(), items);
     }
 
@@ -436,8 +447,7 @@ public class NoteService {
                 note.getOriginalFileName(),
                 note.getContentType(),
                 note.getFileSize(),
-                downloadUrl
-        );
+                downloadUrl);
     }
 
     private RecentlyUploadedNoteResponse toRecentlyUploadedNoteResponse(Note note) {
@@ -446,13 +456,15 @@ public class NoteService {
                 note.getId(),
                 note.getOriginalFileName(),
                 note.getCreatedAt(),
-                uploadedBy.getId(),
-                formatName(uploadedBy),
+                publicUploaderId(note),
+                publicUploaderName(note),
+                note.isAnonymousUpload(),
                 note.getSubjectClass(),
-                note.getDegreeProgram()
-        );
+                note.getDegreeProgram());
     }
 
+    // Uploads a new note version directly when the authenticated user owns the
+    // original note.
     @Transactional
     public NoteResponse uploadVersionDirectly(Long noteId, MultipartFile file, String changeSummary) {
         User currentUser = getCurrentUser();
@@ -487,8 +499,7 @@ public class NoteService {
                     existing.getContentType(),
                     existing.getFileSize(),
                     existing.getStoredFileName(),
-                    existing.getStoragePath()
-            );
+                    existing.getStoragePath());
         } else {
             storedFile = noteFileStorage.store(file);
             isNewFile = true;
@@ -497,13 +508,13 @@ public class NoteService {
         try {
             List<Note> versions = noteRepository.findAllVersions(rootNote.getId());
             int nextVersionNumber = 2;
-            for (Note v : versions) {
-                if (v.getVersionNumber() >= nextVersionNumber) {
-                    nextVersionNumber = v.getVersionNumber() + 1;
+            for (Note versoion : versions) {
+                if (versoion.getVersionNumber() >= nextVersionNumber) {
+                    nextVersionNumber = versoion.getVersionNumber() + 1;
                 }
-                if (v.isLatest()) {
-                    v.setLatest(false);
-                    noteRepository.save(v);
+                if (versoion.isLatest()) {
+                    versoion.setLatest(false);
+                    noteRepository.saveNewNote(versoion);
                 }
             }
 
@@ -519,15 +530,15 @@ public class NoteService {
                     storedFile.fileSize(),
                     storedFile.storageLocation(),
                     currentUser,
-                    Instant.now(clock)
-            );
+                    Instant.now(clock));
             newVersion.setFileHash(fileHash);
             newVersion.setParentNote(rootNote);
             newVersion.setVersionNumber(nextVersionNumber);
             newVersion.setChangeSummary(normalizedSummary);
             newVersion.setLatest(true);
+            newVersion.setAnonymousUpload(rootNote.isAnonymousUpload());
 
-            Note savedVersion = noteRepository.save(newVersion);
+            Note savedVersion = noteRepository.saveNewNoteWithaccessibleId(newVersion);
             notificationPublisher.notifyNoteVersionAdded(savedVersion, currentUser);
             auditPublisher.publish(
                     AuditAction.NOTE_VERSION_UPLOADED,
@@ -535,8 +546,7 @@ public class NoteService {
                     "NOTE",
                     savedVersion.getId(),
                     "Note version uploaded directly",
-                    "versionNumber=" + nextVersionNumber
-            );
+                    "versionNumber=" + nextVersionNumber);
 
             return toNoteResponse(savedVersion);
         } catch (RuntimeException exception) {
@@ -547,6 +557,8 @@ public class NoteService {
         }
     }
 
+    // Lists all versions in a note's version chain for users who can access the
+    // root note.
     @Transactional(readOnly = true)
     public List<NoteVersionResponse> listNoteVersions(Long noteId) {
         User currentUser = getCurrentUser();
@@ -557,14 +569,18 @@ public class NoteService {
         checkNoteAccess(rootNote, currentUser);
 
         List<Note> versions = noteRepository.findAllVersions(rootNote.getId());
-        // Root note might not be included in findAllVersions if it's only finding children, but our query:
-        // "SELECT n FROM Note n WHERE n.id = :rootId OR n.parentNote.id = :rootId" covers both root and children.
+        // Root note might not be included in findAllVersions if it's only finding
+        // children, but our query:
+        // "SELECT n FROM Note n WHERE n.id = :rootId OR n.parentNote.id = :rootId"
+        // covers both root and children.
         // Let's map all of them.
         return versions.stream()
                 .map(this::toVersionResponse)
                 .toList();
     }
 
+    // Creates a pending edit proposal from a verified classmate for the original
+    // author to review.
     @Transactional
     public NoteEditProposalResponse createProposal(Long noteId, MultipartFile file, String changeSummary) {
         User currentUser = getCurrentUser();
@@ -575,6 +591,7 @@ public class NoteService {
 
         Note rootNote = (note.getParentNote() != null) ? note.getParentNote() : note;
         checkNoteAccess(rootNote, currentUser);
+        requireClassmateProposal(rootNote, currentUser);
 
         String normalizedSummary = requireText(changeSummary, "Change summary is required");
         if (normalizedSummary.length() > 1000) {
@@ -596,8 +613,7 @@ public class NoteService {
                     existing.getContentType(),
                     existing.getFileSize(),
                     existing.getStoredFileName(),
-                    existing.getStoragePath()
-            );
+                    existing.getStoragePath());
         } else {
             storedFile = noteFileStorage.store(file);
             isNewFile = true;
@@ -613,8 +629,7 @@ public class NoteService {
                     storedFile.contentType(),
                     storedFile.fileSize(),
                     storedFile.storageLocation(),
-                    Instant.now(clock)
-            );
+                    Instant.now(clock));
             proposal.setFileHash(fileHash);
 
             NoteEditProposal savedProposal = noteEditProposalRepository.save(proposal);
@@ -625,8 +640,7 @@ public class NoteService {
                     "NOTE",
                     rootNote.getId(),
                     "Note edit proposal created",
-                    "proposalId=" + savedProposal.getId()
-            );
+                    "proposalId=" + savedProposal.getId());
 
             return toProposalResponse(savedProposal);
         } catch (RuntimeException exception) {
@@ -637,6 +651,8 @@ public class NoteService {
         }
     }
 
+    // Lists edit proposals for an author, or only the current user's proposals for
+    // classmates.
     @Transactional(readOnly = true)
     public List<NoteEditProposalResponse> listProposals(Long noteId) {
         User currentUser = getCurrentUser();
@@ -644,8 +660,10 @@ public class NoteService {
                 .orElseThrow(() -> new NoteNotFoundException(noteId));
 
         Note rootNote = (note.getParentNote() != null) ? note.getParentNote() : note;
+        checkNoteAccess(rootNote, currentUser);
 
-        List<NoteEditProposal> proposals = noteEditProposalRepository.findByNoteIdOrderByCreatedAtDesc(rootNote.getId());
+        List<NoteEditProposal> proposals = noteEditProposalRepository
+                .findByNoteIdOrderByCreatedAtDesc(rootNote.getId());
 
         if (rootNote.getUploadedBy().getId().equals(currentUser.getId())) {
             // Original author sees all
@@ -659,6 +677,8 @@ public class NoteService {
         }
     }
 
+    // Approves a pending proposal that belongs to this note and promotes it to the
+    // latest version.
     @Transactional
     public NoteResponse approveProposal(Long noteId, Long proposalId) {
         User currentUser = getCurrentUser();
@@ -675,6 +695,7 @@ public class NoteService {
 
         NoteEditProposal proposal = noteEditProposalRepository.findById(proposalId)
                 .orElseThrow(() -> new ProposalNotFoundException(proposalId));
+        requireProposalBelongsToRootNote(proposal, rootNote);
 
         if (proposal.getStatus() != ProposalStatus.PENDING) {
             throw new InvalidNoteInteractionException("Proposal is not pending");
@@ -685,13 +706,13 @@ public class NoteService {
 
         List<Note> versions = noteRepository.findAllVersions(rootNote.getId());
         int nextVersionNumber = 2;
-        for (Note v : versions) {
-            if (v.getVersionNumber() >= nextVersionNumber) {
-                nextVersionNumber = v.getVersionNumber() + 1;
+        for (Note version : versions) {
+            if (version.getVersionNumber() >= nextVersionNumber) {
+                nextVersionNumber = version.getVersionNumber() + 1;
             }
-            if (v.isLatest()) {
-                v.setLatest(false);
-                noteRepository.save(v);
+            if (version.isLatest()) {
+                version.setLatest(false);
+                noteRepository.saveNewNote(version);
             }
         }
 
@@ -707,15 +728,15 @@ public class NoteService {
                 proposal.getFileSize(),
                 proposal.getStoragePath(),
                 proposal.getProposer(),
-                Instant.now(clock)
-        );
+                Instant.now(clock));
         newVersion.setFileHash(proposal.getFileHash());
         newVersion.setParentNote(rootNote);
         newVersion.setVersionNumber(nextVersionNumber);
         newVersion.setChangeSummary(proposal.getChangeSummary());
         newVersion.setLatest(true);
+        newVersion.setAnonymousUpload(rootNote.isAnonymousUpload());
 
-        Note savedVersion = noteRepository.save(newVersion);
+        Note savedVersion = noteRepository.saveNewNoteWithaccessibleId(newVersion);
 
         notificationPublisher.notifyNoteEditProposalApproved(rootNote, currentUser, proposal.getProposer());
         notificationPublisher.notifyNoteVersionAdded(savedVersion, proposal.getProposer());
@@ -726,12 +747,13 @@ public class NoteService {
                 "NOTE",
                 rootNote.getId(),
                 "Note edit proposal approved",
-                "proposalId=" + proposalId + ",versionNumber=" + nextVersionNumber
-        );
+                "proposalId=" + proposalId + ",versionNumber=" + nextVersionNumber);
 
         return toNoteResponse(savedVersion);
     }
 
+    // Rejects a pending proposal that belongs to this note with the author's
+    // reason.
     @Transactional
     public NoteEditProposalResponse rejectProposal(Long noteId, Long proposalId, RejectProposalRequest request) {
         User currentUser = getCurrentUser();
@@ -748,6 +770,7 @@ public class NoteService {
 
         NoteEditProposal proposal = noteEditProposalRepository.findById(proposalId)
                 .orElseThrow(() -> new ProposalNotFoundException(proposalId));
+        requireProposalBelongsToRootNote(proposal, rootNote);
 
         if (proposal.getStatus() != ProposalStatus.PENDING) {
             throw new InvalidNoteInteractionException("Proposal is not pending");
@@ -756,7 +779,8 @@ public class NoteService {
         proposal.reject(currentUser, request.rejectionReason(), Instant.now(clock));
         NoteEditProposal savedProposal = noteEditProposalRepository.save(proposal);
 
-        notificationPublisher.notifyNoteEditProposalRejected(rootNote, currentUser, proposal.getProposer(), request.rejectionReason());
+        notificationPublisher.notifyNoteEditProposalRejected(rootNote, currentUser, proposal.getProposer(),
+                request.rejectionReason());
 
         auditPublisher.publish(
                 AuditAction.NOTE_EDIT_PROPOSAL_REJECTED,
@@ -764,12 +788,12 @@ public class NoteService {
                 "NOTE",
                 rootNote.getId(),
                 "Note edit proposal rejected",
-                "proposalId=" + proposalId
-        );
+                "proposalId=" + proposalId);
 
         return toProposalResponse(savedProposal);
     }
 
+    // Calculates the SHA-256 file hash used for storage de-duplication.
     private String calculateFileHash(ValidatedFile validatedFile) {
         try {
             java.security.MessageDigest digest = java.security.MessageDigest.getInstance("SHA-256");
@@ -788,8 +812,23 @@ public class NoteService {
         }
     }
 
+    // Prevents original authors from using the classmate proposal flow.
+    private void requireClassmateProposal(Note rootNote, User currentUser) {
+        if (Objects.equals(rootNote.getUploadedBy().getId(), currentUser.getId())) {
+            throw new InvalidNoteInteractionException("Original authors should upload a new note version directly");
+        }
+    }
+
+    // Ensures nested proposal routes cannot approve or reject proposals from
+    // another note.
+    private void requireProposalBelongsToRootNote(NoteEditProposal proposal, Note rootNote) {
+        if (!Objects.equals(proposal.getNote().getId(), rootNote.getId())) {
+            throw new ProposalNotFoundException(proposal.getId());
+        }
+    }
+
+    // Converts a note version entity into a version response DTO.
     private NoteVersionResponse toVersionResponse(Note version) {
-        User uploadedBy = version.getUploadedBy();
         return new NoteVersionResponse(
                 version.getId(),
                 version.getParentNote() == null ? null : version.getParentNote().getId(),
@@ -798,12 +837,13 @@ public class NoteService {
                 version.getOriginalFileName(),
                 version.getContentType(),
                 version.getFileSize(),
-                uploadedBy.getId(),
-                formatName(uploadedBy),
-                version.getCreatedAt()
-        );
+                publicUploaderId(version),
+                publicUploaderName(version),
+                version.isAnonymousUpload(),
+                version.getCreatedAt());
     }
 
+    // Converts an edit proposal entity into a proposal response DTO.
     private NoteEditProposalResponse toProposalResponse(NoteEditProposal proposal) {
         User proposer = proposal.getProposer();
         User reviewer = proposal.getReviewedBy();
@@ -821,14 +861,58 @@ public class NoteService {
                 proposal.getCreatedAt(),
                 proposal.getReviewedAt(),
                 reviewer == null ? null : reviewer.getId(),
-                reviewer == null ? null : formatName(reviewer)
-        );
+                reviewer == null ? null : formatName(reviewer));
     }
 
     public record DownloadDetails(
             String pathOrUrl,
             boolean isPresignedUrl,
             String originalFileName,
-            String contentType
-    ) {}
+            String contentType) {
+    }
+
+    /**
+     * Generates a 2-page watermarked PDF preview of the specified note.
+     * Only authenticated and email-verified users who have permission to access the
+     * note can generate previews.
+     * The preview is only supported for PDF documents (contentType:
+     * application/pdf).
+     *
+     * @param noteId the ID of the note
+     * @return the PreviewDetails containing the generated preview bytes and the
+     *         original filename
+     * @throws NoteNotFoundException     if the note is not found
+     * @throws SecurityException         if the user does not have permission to
+     *                                   access this note
+     * @throws EmailNotVerifiedException if the user's email is not verified
+     * @throws InvalidFileException      if the file is not a PDF
+     */
+    @Transactional(readOnly = true)
+    public PreviewDetails generatePreview(Long noteId) {
+        User currentUser = getCurrentUser();
+        requireVerifiedEmail(currentUser);
+
+        Note note = noteRepository.findById(noteId)
+                .orElseThrow(() -> new NoteNotFoundException(noteId));
+
+        checkNoteAccess(note, currentUser);
+
+        if (!"application/pdf".equalsIgnoreCase(note.getContentType())) {
+            log.warn("Preview request rejected: noteId={} is not a PDF, contentType={}", noteId, note.getContentType());
+            throw new InvalidFileException("Previews are only supported for PDF documents");
+        }
+
+        byte[] originalBytes = noteFileStorage.read(note);
+        byte[] previewBytes = PdfPreviewGenerator.generate(originalBytes);
+
+        log.info("Generated preview for noteId={}, userEmail={}, originalSize={}, previewSize={}",
+                noteId, currentUser.getEmail(), originalBytes.length, previewBytes.length);
+
+        return new PreviewDetails(previewBytes, note.getOriginalFileName());
+    }
+
+    public record PreviewDetails(
+            byte[] bytes,
+            String fileName) {
+    }
 }
