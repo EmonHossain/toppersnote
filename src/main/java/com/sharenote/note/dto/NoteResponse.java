@@ -14,6 +14,7 @@ public record NoteResponse(
         long fileSize,
         Long uploadedByUserId,
         String uploadedByName,
+        boolean anonymousUpload,
         long commentCount,
         long upvoteCount,
         long takeALookSuggestionCount,
