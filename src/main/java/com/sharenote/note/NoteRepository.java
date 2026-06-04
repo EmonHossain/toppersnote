@@ -199,6 +199,24 @@ public class NoteRepository {
                 entityManager.persist(note);
         }
 
+        @Transactional
+        public Note saveNewNoteWithaccessibleId(Note note) {
+                // entityManager.persist takes a transient instance and makes it persistent
+                entityManager.persist(note);
+                // After persist, the note's ID is generated and can be accessed
+                note.getId(); // This will now return the generated ID
+                return note;
+        }
+
+        public Optional<Note> findById(Long id) {
+                // 1. Pass the Entity class type and the primary key value
+                Note note = entityManager.find(Note.class, id);
+
+                // 2. Wrap it in an Optional (handles null automatically if the ID doesn't
+                // exist)
+                return Optional.ofNullable(note);
+        }
+
         /**
          * Updates an existing Note in the database (UPDATE).
          */
