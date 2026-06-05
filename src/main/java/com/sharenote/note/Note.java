@@ -80,6 +80,9 @@ public class Note {
     @Column(nullable = false)
     private boolean latest = true;
 
+    @Column(name = "anonymous_upload", nullable = false)
+    private boolean anonymousUpload = false;
+
     public Note(
             String subjectClass,
             String institution,
@@ -126,5 +129,10 @@ public class Note {
 
     public void setChangeSummary(String changeSummary) {
         this.changeSummary = changeSummary;
+    }
+
+    // Records whether public note views should hide the uploader identity.
+    public void setAnonymousUpload(boolean anonymousUpload) {
+        this.anonymousUpload = anonymousUpload;
     }
 }
