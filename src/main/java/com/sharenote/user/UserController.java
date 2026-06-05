@@ -1,10 +1,14 @@
 package com.sharenote.user;
 
 import com.sharenote.user.dto.RegisterUserRequest;
+import com.sharenote.user.dto.ThemePreferenceResponse;
+import com.sharenote.user.dto.UpdateThemePreferenceRequest;
 import com.sharenote.user.dto.UserResponse;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -31,5 +35,17 @@ public class UserController {
     @PostMapping(value = "/me/profile-picture", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<UserResponse> setupProfilePicture(@RequestPart("file") MultipartFile file) {
         return ResponseEntity.ok(userService.setupProfilePicture(file));
+    }
+
+    @GetMapping("/me/preferences")
+    public ResponseEntity<ThemePreferenceResponse> getThemePreference() {
+        return ResponseEntity.ok(userService.getThemePreference());
+    }
+
+    @PatchMapping("/me/preferences")
+    public ResponseEntity<ThemePreferenceResponse> updateThemePreference(
+            @Valid @RequestBody UpdateThemePreferenceRequest request
+    ) {
+        return ResponseEntity.ok(userService.updateThemePreference(request));
     }
 }
