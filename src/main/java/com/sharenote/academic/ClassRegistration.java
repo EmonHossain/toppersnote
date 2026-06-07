@@ -45,10 +45,18 @@ public class ClassRegistration {
     @Column(nullable = false, updatable = false)
     private Instant registeredAt;
 
+    @Column(nullable = false)
+    private boolean archived = false;
+
     public ClassRegistration(AcademicClass academicClass, User user, Instant registeredAt) {
         this.academicClass = academicClass;
         this.user = user;
         this.registeredAt = registeredAt;
+        this.archived = false;
+    }
+
+    public void setArchived(boolean archived) {
+        this.archived = archived;
     }
 
 }
