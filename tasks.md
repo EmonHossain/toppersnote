@@ -162,20 +162,20 @@
 
   * user will be able to hook any AI model to play with the note
 
-* [] NOTE-012 Collaborative Study Groups
+* [x] NOTE-012 Collaborative Study Groups
 
   * Allow users within the same institution/degree program to form virtual study groups. They can pool specific notes into a shared "Notebook" or "Deck."
   * Note Version Control & Co-Authoring: If a note has a typo or missing info, allow other verified classmates to propose edits or upload a "V2" of the note, creating a wiki-like environment for classroom topics.
 
-* [] NOTE-013 Anonymous Upload Toggle
+* [x] NOTE-013 Anonymous Upload Toggle
 
   * Students are sometimes shy about sharing their notes if they fear they aren't perfect. Allow an "Upload Anonymously" checkbox while maintaining the backend userId link for moderation/rewards.
 
-* [] NOTE-014 Note Preview Generation: 
+* [x] NOTE-014 Note Preview Generation: 
 
   * Instead of downloading a whole 10MB PDF blindly, use a library (like PDFBox or a frontend viewer) to generate a watermarked or limited 2-page preview of the note before downloading.
 
-* [] NOTE-015  Calendar & Academic Lifecycles
+* [x] NOTE-015  Calendar & Academic Lifecycles
 
   * Exam Date Synchronization: Allow users to post exam dates for a specific subject/class. The system can aggregate these dates to send an automated system alert 7 days before the exam: "Your Calculus mid-term is in 7 days! Here are the top 3 upvoted notes from this week to help you prepare."
   * Semester Archiving: Give users an elegant way to archive their old classes at the end of a semester so their dashboard stays clean, while keeping the data accessible for the next batch of incoming students.
@@ -199,13 +199,13 @@
   * Allow admins to query audit events
   * Include actor, target, action, message, metadata, and timestamp
 
-* [] ADMIN-003 Notes auto removal
+* [x] ADMIN-003 Notes auto removal
 
   * Notes related to obsolite course subject/class will automatically get removed after 5 years
   * issue a notice to the user who uploaded the note one month earlier before auto remove with proper link to the exact note so that user can click on the link and go directly to the note and take nessecery actions.
   * implement a robust scheduling framework like Quartz Scheduler. Add an admin capability to monitor these upcoming cron jobs and email queues.
 
-* [] ADMIN-004 System analytics
+* [x] ADMIN-004 System analytics
 
     * Global Search with Elasticsearch
       * If the database grows large, standard JPA queries for navigating degree programs and subjects might slow down. Introducing Elasticsearch to make text search incredibly fast.
@@ -227,3 +227,89 @@
 * Add unit tests for services
 * Add integration tests for auth flow
 * Add file storage abstraction (local vs S3)
+
+---
+
+## 🚀 FEATURE EXTENSION BACKLOG
+
+* [x] EXT-010 Study Group Activity Feed
+
+  * Track study group events such as note added, edit proposed, comment added, exam date posted, and notebook updated
+  * Show activity only to authorized study group members
+  * Keep feed pagination efficient for large groups
+  * Consider Redis for hot recent-feed caching if it improves performance
+  * Persist audit-relevant group actions where appropriate
+
+* [x] EXT-004 Personal Study Dashboard
+
+  * Show upcoming exams, recommended notes, unread suggestions, recent notifications, and active study groups
+  * Personalize dashboard content using the user's registered classes and academic lifecycle data
+  * Include top notes for the user's current classes using downloads, views, freshness, and upvotes
+  * Keep all dashboard endpoints behind the configured `API_BASE_PATH`
+  * Add DTOs and OpenAPI documentation without exposing entities directly
+
+* [x] EXT-006 Report And Flag System
+
+  * Allow authenticated users to report duplicate, unsafe, copyrighted, irrelevant, or low-quality notes
+  * Prevent duplicate active reports from the same user for the same note and reason
+  * Notify admins or expose admin moderation queues for unresolved reports
+  * Persist audit events for report creation and moderation decisions
+  * Add validation, OpenAPI documentation, and service tests
+  
+* [x] EXT-009 Personal Collections And Playlists
+
+  * Let users organize notes into private collections such as Midterm Prep, Week 3 Lectures, or Final Review
+  * Allow adding and removing visible notes from personal collections
+  * Keep collection ownership private unless a later task adds sharing
+  * Return collection summaries and ordered note lists through DTOs
+  * Add validation and tests for collection access control
+  
+* [x] EXT-005 Note Quality Scoring
+
+  * Score notes using upvotes, downloads, views, preview availability, freshness, version history, and moderation status
+  * Use scores to rank recommendations, dashboard sections, and search results
+  * Keep scoring explainable through non-sensitive response fields where appropriate
+  * Recalculate scores efficiently through scheduled jobs, events, or cached hot reads
+  * Document Redis usage if caching score data improves performance
+
+* [ ] EXT-001 File Text Extraction
+
+  * Extract searchable text from supported files such as PDF, DOCX, PPTX, XLSX, and images where practical
+  * Store extracted text separately from original files and never modify uploaded content
+  * Use extracted text to improve search, AI chat, summaries, previews, and moderation
+  * Keep extraction resilient so failed parsing does not break note upload
+  * Document configuration and processing limits in `.env.example`
+
+* [ ] EXT-002 Semantic Note Search
+
+  * Add meaning-based search using embeddings or another semantic retrieval strategy
+  * Combine semantic results with Elasticsearch keyword search where useful
+  * Keep a safe database fallback when semantic or Elasticsearch infrastructure is unavailable
+  * Restrict results to the current user's institution, degree program, subject/class, semester, and year visibility rules
+  * Add OpenAPI documentation and tests for the search contract
+
+* [ ] EXT-003 Smart Note Summaries
+
+  * Generate concise summaries, key terms, formulas, and likely exam topics for uploaded notes
+  * Store AI-generated summaries separately from note files and extracted text
+  * Allow regeneration when a note version changes
+  * Protect AI calls with rate limiting, validation, and resilience fallback behavior
+  * Avoid logging note contents, prompts, provider secrets, or generated sensitive content
+
+* [ ] EXT-007 Instructor And Verified Contributor Roles
+
+  * Add trusted roles such as `ROLE_INSTRUCTOR` and `ROLE_VERIFIED_CONTRIBUTOR`
+  * Allow admins to grant and revoke trusted contributor status
+  * Highlight trusted uploads in note responses and ranking logic
+  * Enforce role changes in JWT-protected requests without using sessions
+  * Add audit events for role changes
+
+* [ ] EXT-008 Note Version Diff
+
+  * Allow users to compare note versions and edit proposals
+  * Return metadata differences, summary differences, extracted-text differences where available, and changed file details
+  * Keep access control aligned with note visibility rules
+  * Avoid exposing raw file contents unless explicitly allowed by an endpoint
+  * Add OpenAPI documentation and tests for diff responses
+
+

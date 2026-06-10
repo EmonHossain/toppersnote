@@ -10,3 +10,6 @@ target/
 
 *.log
 bin/
+
+graphify-out/
+.codex

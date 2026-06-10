@@ -1,0 +1,19 @@
+# .graphifyignore
+
+node_modules/
+dist/
+*.generated.py
+
+target/
+
+.idea/
+*.iml
+.vscode/
+
+*.log
+bin/
+
+!src/
+!src/**
+!.env
+!.env.*

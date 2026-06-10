@@ -1,6 +1,12 @@
 target/
+bin/
 .git/
 .gitignore
+AGENTS.md
+execute-tasks.md
+tasks.md
+professional-backend-tooling.md
+dependency-check-suppressions.xml
 
 .env
 .env.*
@@ -12,3 +18,7 @@ target/
 
 *.log
 uploads/
+admin/
+docker/
+README.md
+Jenkinsfile
