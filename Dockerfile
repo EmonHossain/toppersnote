@@ -1,27 +1,28 @@
+# syntax=docker/dockerfile:1.7
+
 FROM maven:3.9-eclipse-temurin-25 AS build
 
 WORKDIR /workspace
 
 COPY pom.xml .
-RUN mvn -B dependency:go-offline
+RUN --mount=type=cache,target=/root/.m2 mvn -B dependency:go-offline
 
 COPY src ./src
-RUN mvn -B package -DskipTests
+RUN --mount=type=cache,target=/root/.m2 mvn -B package -DskipTests
 
-# Use the Jammy-based Temurin JRE and apply OS security updates to reduce known CVEs.
 FROM eclipse-temurin:25-jre-jammy AS runtime
+
+ARG APP_UID=10001
+ARG APP_GID=10001
 
 WORKDIR /app
 
-# Install minimal packages (ca-certificates) and apply security updates, then clean apt caches.
 RUN apt-get update \
-	&& apt-get upgrade -y \
-	&& apt-get install -y --no-install-recommends ca-certificates \
+	&& apt-get install -y --no-install-recommends ca-certificates curl \
 	&& rm -rf /var/lib/apt/lists/*
 
-# Create a non-root user and ensure app directory permissions.
-RUN addgroup --system sharenote \
-	&& adduser --system --ingroup sharenote sharenote
+RUN groupadd --system --gid "${APP_GID}" sharenote \
+	&& useradd --system --uid "${APP_UID}" --gid sharenote --home-dir /app --shell /usr/sbin/nologin sharenote
 
 COPY --from=build /workspace/target/sharenote-0.0.1-SNAPSHOT.jar /app/sharenote.jar
 
@@ -31,5 +32,10 @@ RUN mkdir -p /app/uploads/notes \
 USER sharenote
 
 EXPOSE 8080
+
+ENV JAVA_TOOL_OPTIONS="-XX:MaxRAMPercentage=75.0 -XX:+ExitOnOutOfMemoryError"
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
+	CMD curl -fsS "http://localhost:${SERVER_PORT:-8080}/actuator/health/readiness" >/dev/null || exit 1
 
 ENTRYPOINT ["java", "-jar", "/app/sharenote.jar"]

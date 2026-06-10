@@ -1,4 +1,232 @@
 services:
+  mysql:
+    image: mysql:8.4
+    container_name: sharenote-mysql
+    profiles:
+      - database
+      - tooling
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-sharenote}
+      MYSQL_USER: ${MYSQL_USER:-sharenote}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-sharenote-dev-secret}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-sharenote-root-secret}
+    ports:
+      - "${MYSQL_PORT:-3306}:3306"
+    volumes:
+      - sharenote_mysql_data:/var/lib/mysql
+    networks:
+      - sharenote_backend
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u root -p$${MYSQL_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  minio:
+    image: minio/minio:latest
+    container_name: sharenote-minio
+    profiles:
+      - s3
+      - tooling
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-sharenote}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-sharenote-dev-secret}
+    ports:
+      - "${MINIO_API_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+    volumes:
+      - sharenote_minio_data:/data
+    networks:
+      - sharenote_backend
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  minio-init:
+    image: minio/mc:latest
+    container_name: sharenote-minio-init
+    profiles:
+      - s3
+      - tooling
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set local http://minio:9000 ${MINIO_ROOT_USER:-sharenote} ${MINIO_ROOT_PASSWORD:-sharenote-dev-secret};
+      mc mb --ignore-existing local/sharenote-notes;
+      mc mb --ignore-existing local/sharenote-profile-pictures;
+      "
+    networks:
+      - sharenote_backend
+    restart: "no"
+
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: sharenote-mailpit
+    profiles:
+      - mail
+      - tooling
+    ports:
+      - "${MAILPIT_SMTP_PORT:-1025}:1025"
+      - "${MAILPIT_UI_PORT:-8025}:8025"
+    networks:
+      - sharenote_backend
+    restart: unless-stopped
+
+  redis:
+    image: redis:7.4-alpine
+    container_name: sharenote-redis
+    profiles:
+      - cache
+      - tooling
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - sharenote_redis_data:/data
+    networks:
+      - sharenote_backend
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.15.3
+    container_name: sharenote-elasticsearch
+    profiles:
+      - search
+      - tooling
+    environment:
+      discovery.type: single-node
+      xpack.security.enabled: "false"
+      ES_JAVA_OPTS: "-Xms512m -Xmx512m"
+    ports:
+      - "${ELASTICSEARCH_HTTP_PORT:-9200}:9200"
+      - "${ELASTICSEARCH_TRANSPORT_PORT:-9300}:9300"
+    volumes:
+      - sharenote_elasticsearch_data:/usr/share/elasticsearch/data
+    networks:
+      - sharenote_backend
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:9200/_cluster/health >/dev/null"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+    restart: unless-stopped
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.15.3
+    container_name: sharenote-kibana
+    profiles:
+      - search
+      - tooling
+    environment:
+      ELASTICSEARCH_HOSTS: http://elasticsearch:9200
+    ports:
+      - "${KIBANA_PORT:-5601}:5601"
+    volumes:
+      - sharenote_kibana_data:/usr/share/kibana/data
+    networks:
+      - sharenote_backend
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    restart: unless-stopped
+
+  filebeat:
+    image: docker.elastic.co/beats/filebeat:8.15.3
+    container_name: sharenote-filebeat
+    profiles:
+      - logging
+      - tooling
+    user: root
+    command: ["filebeat", "-e", "--strict.perms=false"]
+    environment:
+      ELASTICSEARCH_HOSTS: ${FILEBEAT_ELASTICSEARCH_HOSTS:-http://elasticsearch:9200}
+      KIBANA_HOST: ${FILEBEAT_KIBANA_HOST:-http://kibana:5601}
+      FILEBEAT_INDEX_NAME: ${FILEBEAT_INDEX_NAME:-sharenote-ecs}
+    volumes:
+      - ./docker/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
+      - sharenote_logs:/var/log/sharenote:ro
+    networks:
+      - sharenote_backend
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+      kibana:
+        condition: service_started
+    restart: unless-stopped
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.130.1
+    container_name: sharenote-otel-collector
+    profiles:
+      - observability
+      - tooling
+    command: ["--config=/etc/otelcol-contrib/config.yml"]
+    ports:
+      - "${OTEL_COLLECTOR_GRPC_PORT:-4317}:4317"
+      - "${OTEL_COLLECTOR_HTTP_PORT:-4318}:4318"
+      - "${OTEL_COLLECTOR_PROMETHEUS_PORT:-9464}:9464"
+    volumes:
+      - ./docker/otel-collector-config.yml:/etc/otelcol-contrib/config.yml:ro
+    networks:
+      - sharenote_backend
+    restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus:v3.5.0
+    container_name: sharenote-prometheus
+    profiles:
+      - observability
+      - tooling
+    ports:
+      - "${PROMETHEUS_PORT:-9090}:9090"
+    volumes:
+      - ./docker/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - sharenote_prometheus_data:/prometheus
+    networks:
+      - sharenote_backend
+    depends_on:
+      - otel-collector
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:9090/-/ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:12.0.2
+    container_name: sharenote-grafana
+    profiles:
+      - observability
+      - tooling
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+    ports:
+      - "${GRAFANA_PORT:-3000}:3000"
+    volumes:
+      - sharenote_grafana_data:/var/lib/grafana
+      - ./docker/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./docker/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    networks:
+      - sharenote_backend
+    depends_on:
+      prometheus:
+        condition: service_healthy
+    restart: unless-stopped
+
   sharenote-api:
     build:
       context: .
@@ -9,9 +237,50 @@ services:
       - .env
     ports:
       - "${APP_PORT:-8080}:${SERVER_PORT:-8080}"
+    depends_on:
+      mysql:
+        condition: service_healthy
+        required: false
+      minio:
+        condition: service_healthy
+        required: false
+      mailpit:
+        condition: service_started
+        required: false
+      redis:
+        condition: service_healthy
+        required: false
+      elasticsearch:
+        condition: service_healthy
+        required: false
+      otel-collector:
+        condition: service_started
+        required: false
     volumes:
       - sharenote_uploads:/app/uploads/notes
+      - sharenote_logs:/app/logs
+    networks:
+      - sharenote_backend
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:$${SERVER_PORT:-8080}/actuator/health/readiness >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 5s
+      start_period: 60s
+      retries: 3
     restart: unless-stopped
+
+networks:
+  sharenote_backend:
+    name: sharenote_backend
+    driver: bridge
 
 volumes:
   sharenote_uploads:
+  sharenote_minio_data:
+  sharenote_mysql_data:
+  sharenote_redis_data:
+  sharenote_elasticsearch_data:
+  sharenote_kibana_data:
+  sharenote_logs:
+  sharenote_prometheus_data:
+  sharenote_grafana_data:
