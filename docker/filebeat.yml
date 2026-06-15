@@ -1,0 +1,36 @@
+filebeat.inputs:
+  - type: filestream
+    id: sharenote-api-ecs-log
+    enabled: true
+    paths:
+      - /var/log/sharenote/*.log
+    parsers:
+      - ndjson:
+          target: ""
+          overwrite_keys: true
+          add_error_key: true
+    fields_under_root: true
+    fields:
+      event.dataset: sharenote.api
+      service.name: sharenote-api
+
+processors:
+  - add_host_metadata: ~
+  - add_fields:
+      target: labels
+      fields:
+        application: sharenote
+        log_pipeline: filebeat
+
+setup.ilm.enabled: false
+setup.template.name: "${FILEBEAT_INDEX_NAME:sharenote-ecs}"
+setup.template.pattern: "${FILEBEAT_INDEX_NAME:sharenote-ecs}-*"
+setup.kibana:
+  host: "${KIBANA_HOST:http://kibana:5601}"
+
+output.elasticsearch:
+  hosts:
+    - "${ELASTICSEARCH_HOSTS:http://elasticsearch:9200}"
+  index: "${FILEBEAT_INDEX_NAME:sharenote-ecs}-%{+yyyy.MM.dd}"
+
+logging.level: info
