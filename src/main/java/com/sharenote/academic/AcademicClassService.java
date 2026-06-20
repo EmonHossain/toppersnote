@@ -34,6 +34,7 @@ public class AcademicClassService implements AcademicClassRegistrar {
         this.clock = Clock.systemUTC();
     }
 
+    // Automatically registers users matching the academic context of the newly uploaded note.
     @Transactional
     @Override
     public AcademicClass registerMatchingUsers(Note note) {
@@ -73,18 +74,64 @@ public class AcademicClassService implements AcademicClassRegistrar {
         return academicClass;
     }
 
+    /**
+     * Retrieves active (non-archived) classes registered for the currently authenticated user.
+     * Delegates to criteria-backed ClassRegistrationRepository queries.
+     *
+     * @return a list of active AcademicClassResponse
+     */
     @Transactional(readOnly = true)
     public List<AcademicClassResponse> getMyClasses() {
         User currentUser = getCurrentUser();
+
         return classRegistrationRepository
                 .findByUserIdOrderByAcademicClassDegreeProgramAscAcademicClassYearAscAcademicClassSemesterAscAcademicClassSubjectClassAsc(
                         currentUser.getId()
                 )
                 .stream()
+                .filter(registration -> !registration.isArchived())
                 .map(ClassRegistration::getAcademicClass)
                 .map(this::toResponse)
                 .toList();
     }
+
+    /**
+     * Retrieves archived classes registered for the currently authenticated user.
+     * Delegates to criteria-backed ClassRegistrationRepository queries.
+     *
+     * @return a list of archived AcademicClassResponse
+     */
+    @Transactional(readOnly = true)
+    public List<AcademicClassResponse> getMyArchivedClasses() {
+        User currentUser = getCurrentUser();
+
+        return classRegistrationRepository
+                .findByUserIdOrderByAcademicClassDegreeProgramAscAcademicClassYearAscAcademicClassSemesterAscAcademicClassSubjectClassAsc(
+                        currentUser.getId()
+                )
+                .stream()
+                .filter(ClassRegistration::isArchived)
+                .map(ClassRegistration::getAcademicClass)
+                .map(this::toResponse)
+                .toList();
+    }
+
+    /**
+     * Archives a registered class for the currently authenticated user by setting archived = true.
+     * Uses a criteria-backed repository query to retrieve the registration first.
+     *
+     * @param classId the ID of the AcademicClass to archive
+     */
+    @Transactional
+    public void archiveClass(Long classId) {
+        User currentUser = getCurrentUser();
+
+        ClassRegistration reg = classRegistrationRepository.findByAcademicClassIdAndUserId(classId, currentUser.getId())
+                .orElseThrow(() -> new InvalidAcademicNavigationException("Class registration not found for the user"));
+        reg.setArchived(true);
+        classRegistrationRepository.save(reg);
+    }
+
 
     @Transactional(readOnly = true)
     public List<String> getDegreePrograms() {
