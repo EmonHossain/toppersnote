@@ -24,29 +24,46 @@ import static org.springframework.http.HttpMethod.POST;
 @EnableConfigurationProperties(JwtProperties.class)
 public class SecurityConfig {
 
+    private static final String[] OPENAPI_ENDPOINTS = {
+            "/v3/api-docs",
+            "/v3/api-docs/**",
+            "/swagger-ui.html",
+            "/swagger-ui/**"
+    };
+    private static final String[] PUBLIC_AUTH_ENDPOINTS = {
+            "/auth/**",
+            "/api/v*/auth/login",
+            "/api/v*/auth/refresh",
+            "/api/v*/auth/verify-email",
+            "/api/v*/auth/resend-verification"
+    };
+
     @Bean
+    // Configures stateless JWT security and version-aware public endpoints.
     public SecurityFilterChain securityFilterChain(
             HttpSecurity http,
             JwtAuthenticationFilter jwtAuthenticationFilter,
             JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint,
-            RateLimitingFilter rateLimitingFilter
+            RateLimitingFilter rateLimitingFilter,
+            DynamicAuthorizationManager dynamicAuthorizationManager
     ) throws Exception {
         return http
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .exceptionHandling(exception -> exception.authenticationEntryPoint(jwtAuthenticationEntryPoint))
-                .addFilterBefore(rateLimitingFilter, JwtAuthenticationFilter.class)
+                .addFilterBefore(rateLimitingFilter, UsernamePasswordAuthenticationFilter.class)
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/auth/**").permitAll()
-                        .requestMatchers(POST, "/users/register").permitAll()
-                        .requestMatchers("/admin/**").hasRole("ADMIN")
-                        .anyRequest().authenticated()
+                        .requestMatchers(PUBLIC_AUTH_ENDPOINTS).permitAll()
+                        .requestMatchers(POST, "/api/v*/users/register").permitAll()
+                        .requestMatchers(OPENAPI_ENDPOINTS).permitAll()
+                        .anyRequest().access(dynamicAuthorizationManager)
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();
     }
 
     @Bean
+    // Creates the DAO authentication provider used by Spring Security login flow.
     public AuthenticationProvider authenticationProvider(
             UserDetailsService userDetailsService,
             PasswordEncoder passwordEncoder
@@ -57,11 +74,13 @@ public class SecurityConfig {
     }
 
     @Bean
+    // Exposes Spring's authentication manager for credential validation services.
     public AuthenticationManager authenticationManager(AuthenticationConfiguration configuration) throws Exception {
         return configuration.getAuthenticationManager();
     }
 
     @Bean
+    // Provides BCrypt hashing for storing and verifying user passwords.
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
