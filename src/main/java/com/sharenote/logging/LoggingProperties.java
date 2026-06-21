@@ -2,7 +2,7 @@ package com.sharenote.logging;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
-@ConfigurationProperties(prefix = "logging")
+@ConfigurationProperties(prefix = "logging.properties")
 public record LoggingProperties(
     String traceIdKey,
     String tenantIdKey,
