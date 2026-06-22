@@ -1,6 +1,5 @@
 package com.sharenote.auth;
 
-import com.sharenote.user.User;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -16,6 +15,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.time.Instant;
+
+import com.sharenote.user.entities.User;
 
 @Entity
 @Table(name = "refresh_tokens")
