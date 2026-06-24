@@ -6,7 +6,7 @@ import com.sharenote.admin.dto.TemporaryBanRequest;
 import com.sharenote.admin.dto.UnbanRequest;
 import com.sharenote.audit.AuditAction;
 import com.sharenote.audit.AuditService;
-import com.sharenote.audit.dto.AuditEventResponse;
+import com.sharenote.audit.dto.AuditResponse;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -61,7 +61,7 @@ public class AdminController {
     }
 
     @GetMapping("/audit-events")
-    public ResponseEntity<List<AuditEventResponse>> getAuditEvents(
+    public ResponseEntity<List<AuditResponse>> getAuditEvents(
             @RequestParam(name = "action", required = false) AuditAction action,
             @RequestParam(name = "actorUserId", required = false) Long actorUserId,
             @RequestParam(name = "targetType", required = false) String targetType,
