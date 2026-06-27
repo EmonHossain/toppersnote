@@ -1,17 +1,20 @@
 package com.sharenote.auth;
 
-import com.sharenote.audit.AuditAction;
-import com.sharenote.audit.AuditPublisher;
-import com.sharenote.auth.dto.AuthResponse;
-import com.sharenote.auth.dto.LoginRequest;
-import com.sharenote.auth.dto.RefreshTokenRequest;
-import com.sharenote.user.AccountBannedException;
-import com.sharenote.user.User;
-import com.sharenote.user.UserRepository;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.stereotype.Service;
+
+import com.sharenote.audit.AuditAction;
+import com.sharenote.audit.AuditRecorder;
+import com.sharenote.auth.dto.AuthResponse;
+import com.sharenote.auth.dto.LoginRequest;
+import com.sharenote.auth.dto.RefreshTokenRequest;
+import com.sharenote.user.AccountBannedException;
+import com.sharenote.user.UserRepository;
+import com.sharenote.user.entities.User;
 
 @Service
 public class AuthService {
@@ -20,19 +23,22 @@ public class AuthService {
     private final JwtService jwtService;
     private final RefreshTokenService refreshTokenService;
     private final UserRepository userRepository;
-    private final AuditPublisher auditPublisher;
+    private final AuditRecorder auditRecorder;
+    private final RedisTemplate redisTemplate;
 
     public AuthService(
             AuthenticationManager authenticationManager,
             JwtService jwtService,
             RefreshTokenService refreshTokenService,
             UserRepository userRepository,
-            AuditPublisher auditPublisher) {
+            AuditRecorder auditRecorder,
+            RedisTemplate redisTemplate) {
         this.authenticationManager = authenticationManager;
         this.jwtService = jwtService;
         this.refreshTokenService = refreshTokenService;
         this.userRepository = userRepository;
-        this.auditPublisher = auditPublisher;
+        this.auditRecorder = auditRecorder;
+        this.redisTemplate = redisTemplate;
     }
 
     public AuthResponse login(LoginRequest request) {
@@ -42,7 +48,7 @@ public class AuthService {
             authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(normalizedEmail, request.password()));
         } catch (AuthenticationException exception) {
-            auditPublisher.publishAnonymous(
+            auditRecorder.recordAnonymous(
                     AuditAction.LOGIN_FAILED,
                     normalizedEmail,
                     "USER",
@@ -54,12 +60,12 @@ public class AuthService {
 
         User user = userRepository.findByEmailIgnoreCase(normalizedEmail)
                 .orElseThrow(InvalidCredentialsException::new);
-        if (user.isCurrentlyBanned(java.time.Instant.now())) {
-            auditPublisher.publish(AuditAction.LOGIN_FAILED, user, "USER", user.getId(), "Login blocked for banned user");
+        if (user.getProfileHealth().getCode()>1) {
+            auditRecorder.record(AuditAction.LOGIN_FAILED, user, "USER", user.getId(), "Login blocked for banned user");
             throw new AccountBannedException(buildBanMessage(user));
         }
 
-        auditPublisher.publish(AuditAction.LOGIN_SUCCEEDED, user, "USER", user.getId(), "Login succeeded");
+        auditRecorder.record(AuditAction.LOGIN_SUCCEEDED, user, "USER", user.getId(), "Login succeeded");
 
         return new AuthResponse(
                 jwtService.generateAccessToken(user),
@@ -90,5 +96,9 @@ public class AuthService {
             return "Account is permanently banned. Notice: " + user.getBanNotice();
         }
         return "Account is temporarily banned until " + user.getBannedUntil() + ". Notice: " + user.getBanNotice();
+    }
+
+    private void cacheAuthToken(String username, String token){
+
     }
 }
