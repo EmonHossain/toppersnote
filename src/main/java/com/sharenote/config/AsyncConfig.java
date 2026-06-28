@@ -23,22 +23,20 @@ public class AsyncConfig {
         executor.initialize();
         return executor;
     }
-
+    // Executor 2: For event background tasks
     @Bean(name = "eventTaskExecutor")
     public Executor taskExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
         executor.setCorePoolSize(5);       // Minimum number of threads to keep alive
         executor.setMaxPoolSize(10);      // Maximum threads allowed if queue fills up
         executor.setQueueCapacity(500);   // Number of tasks allowed in queue before expanding pool
-        // CRUCIAL: What to do when the queue is full because threads are stuck
-        // AbortPolicy throws an exception immediately instead of blocking the caller
         executor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
         executor.setThreadNamePrefix("Event-Async-Thread-");
         executor.initialize();
         return executor;
     }
 
-    // Executor 2: For heavy, slow background tasks
+    // Executor 3: For heavy, slow background tasks
     @Bean(name = "backgroundTaskExecutor")
     public Executor backgroundTaskExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
