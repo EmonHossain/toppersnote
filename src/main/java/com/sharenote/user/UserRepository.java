@@ -1,20 +1,26 @@
 package com.sharenote.user;
 
+import java.security.Permission;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 
+import org.hibernate.query.restriction.Restriction;
 import org.springframework.data.domain.Sort.Direction;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.sharenote.persistence.CriteriaRepositorySupport;
+import com.sharenote.role.Role;
 import com.sharenote.user.entities.User;
 import com.sharenote.user.entities.User_;
 
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.CriteriaQuery;
+import jakarta.persistence.criteria.Fetch;
+import jakarta.persistence.criteria.Join;
+import jakarta.persistence.criteria.JoinType;
 import jakarta.persistence.criteria.Root;
 import jakarta.persistence.metamodel.SingularAttribute;
 
@@ -51,7 +57,7 @@ public class UserRepository extends CriteriaRepositorySupport<User> {
 
     // findAll
     @Transactional(readOnly = true)
-    public List<User> findAllAsOrdered(SingularAttribute<?,?> property, Direction direction) {
+    public List<User> findAllAsOrdered(SingularAttribute<?, ?> property, Direction direction) {
         CriteriaBuilder cb = entityManager.getCriteriaBuilder();
         CriteriaQuery<User> query = cb.createQuery(User.class);
         Root<User> user = query.from(User.class);
@@ -133,11 +139,35 @@ public class UserRepository extends CriteriaRepositorySupport<User> {
         return value.toLowerCase(Locale.ROOT);
     }
 
-    public Optional<User> findByUsername(String username) {
+    public Optional<User> findUserByUsername(String username) {
         CriteriaBuilder cb = entityManager.getCriteriaBuilder();
         CriteriaQuery<User> query = cb.createQuery(User.class);
         Root<User> root = query.from(User.class);
         query.where(cb.equal(root.get(User_.username), username));
         return entityManager.createQuery(query).setMaxResults(1).getResultList().stream().findFirst();
+    }
+
+    public Optional<User> fetchUserFullInfo(String username) {
+        CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+        CriteriaQuery<User> query = cb.createQuery(User.class);
+        Root<User> root = query.from(User.class);
+        Fetch<User, Role> userFetchRole = root.fetch("roles", JoinType.LEFT);
+        userFetchRole.fetch("permissions", JoinType.LEFT);
+        query.select(root).where(cb.equal(root.get(User_.username), username));
+        List<User> users = entityManager.createQuery(query).getResultList();
+
+        if (users.isEmpty()) {
+            return Optional.empty();
+        }
+        User user = users.get(0);
+
+        // QUERY 2: Fetch User + Direct Permissions (Hibernate merges this into the existing 'user' object)
+        CriteriaQuery<User> query2 = cb.createQuery(User.class);
+        Root<User> root2 = query2.from(User.class);
+        root2.fetch("permissions", JoinType.LEFT);
+        query2.select(root2).where(cb.equal(root2.get(User_.username), username));
+        entityManager.createQuery(query2).getResultList();
+
+        return Optional.of(user);
     }
 }
