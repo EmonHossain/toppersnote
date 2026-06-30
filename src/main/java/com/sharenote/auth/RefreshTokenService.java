@@ -1,7 +1,8 @@
 package com.sharenote.auth;
 
 import com.sharenote.user.AccountBannedException;
-import com.sharenote.user.User;
+import com.sharenote.user.entities.User;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
