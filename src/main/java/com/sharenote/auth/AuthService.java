@@ -15,6 +15,7 @@ import com.sharenote.auth.dto.RefreshTokenRequest;
 import com.sharenote.user.AccountBannedException;
 import com.sharenote.user.UserRepository;
 import com.sharenote.user.entities.User;
+import com.sharenote.user.enums.ProfileHealth;
 
 @Service
 public class AuthService {
@@ -42,15 +43,15 @@ public class AuthService {
     }
 
     public AuthResponse login(LoginRequest request) {
-        String normalizedEmail = request.email().trim().toLowerCase();
+        String username = request.username().trim();
 
         try {
             authenticationManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(normalizedEmail, request.password()));
+                    new UsernamePasswordAuthenticationToken(username, request.password()));
         } catch (AuthenticationException exception) {
             auditRecorder.recordAnonymous(
                     AuditAction.LOGIN_FAILED,
-                    normalizedEmail,
+                    username,
                     "USER",
                     null,
                     "Login failed"
@@ -58,7 +59,7 @@ public class AuthService {
             throw new InvalidCredentialsException();
         }
 
-        User user = userRepository.findByEmailIgnoreCase(normalizedEmail)
+        User user = userRepository.findUserByUsername(username)
                 .orElseThrow(InvalidCredentialsException::new);
         if (user.getProfileHealth().getCode()>1) {
             auditRecorder.record(AuditAction.LOGIN_FAILED, user, "USER", user.getId(), "Login blocked for banned user");
@@ -76,7 +77,7 @@ public class AuthService {
 
     public AuthResponse refresh(RefreshTokenRequest request) {
         RefreshTokenRotation rotation = refreshTokenService.rotate(request.refreshToken());
-        auditPublisher.publish(
+        auditRecorder.record(
                 AuditAction.REFRESH_TOKEN_USED,
                 rotation.user(),
                 "USER",
@@ -92,13 +93,9 @@ public class AuthService {
     }
 
     private String buildBanMessage(User user) {
-        if (user.isPermanentlyBanned()) {
-            return "Account is permanently banned. Notice: " + user.getBanNotice();
+        if (user.getProfileHealth().getCode() == 3) {
+            return "Account is permanently banned. Notice: " + user.getUserPolicyStatus().getBanNotice();
         }
-        return "Account is temporarily banned until " + user.getBannedUntil() + ". Notice: " + user.getBanNotice();
-    }
-
-    private void cacheAuthToken(String username, String token){
-
+        return "Account is temporarily banned until " + user.getUserPolicyStatus().getBannedUntil() + ". Notice: " + user.getUserPolicyStatus().getBanNotice();
     }
 }
