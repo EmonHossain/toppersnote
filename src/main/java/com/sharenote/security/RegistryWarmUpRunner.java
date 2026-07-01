@@ -8,43 +8,56 @@ import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.stereotype.Component;
 
-import jakarta.persistence.Entity;
+import com.sharenote.permission.Permission;
+import com.sharenote.permission.PermissionService;
+import com.sharenote.role.Role;
+import com.sharenote.role.RoleService;
+
+import lombok.extern.slf4j.Slf4j;
 
 @Component
-public class RegistryWarmUpRunner implements ApplicationRunner{
+@Slf4j
+public class RegistryWarmUpRunner implements ApplicationRunner {
 
-    private final PermissionRepository permissionRepository;
-    private final PermissionRegistry permissionRegistry;
+        private final PermissionService permissionService;
+        private final PermissionRegistry permissionRegistry;
+        private final RoleRegistry roleRegistry;
+        private final RoleService roleService;
 
-    public RegistryWarmUpRunner(PermissionRepository permissionRepository, 
-                                 PermissionRegistry permissionRegistry) {
-        this.permissionRepository = permissionRepository;
-        this.permissionRegistry = permissionRegistry;
-    }
+        public RegistryWarmUpRunner(PermissionService permissionService,
+                        PermissionRegistry permissionRegistry,
+                        RoleRegistry roleRegistry,
+                        RoleService roleService) {
+                this.permissionService = permissionService;
+                this.permissionRegistry = permissionRegistry;
+                this.roleRegistry = roleRegistry;
+                this.roleService = roleService;
+        }
 
-    @Override
-    public void run(ApplicationArguments args) throws Exception {System.out.println("🔄 Loading global permission registry from Database...");
+        @Override
+        public void run(ApplicationArguments args) throws Exception {
+                this.loadPermissionDefinitions();
+                this.loadRoleDefinitions();
+        }
 
-        // 1. Fetch from DB
-        List<Permission> permissions = permissionRepository.findAll();
+        private void loadPermissionDefinitions() {
+                List<Permission> permissions = this.permissionService.getAllPermissions();
+                Map<Long, String> definitionsMap = permissions.stream()
+                                .collect(Collectors.toMap(
+                                                Permission::getId,
+                                                Permission::getRequiredPermission));
+                this.permissionRegistry.initialize(definitionsMap);
+                log.info("Permission definition initialized");
+        }
 
-        // 2. Map to immutable domain models
-        Map<Long, PermissionDefinition> definitionsMap = permissions.stream()
-                .collect(Collectors.toMap(
-                        Permission::getId,
-                        entity -> new PermissionDefinition(
-                                entity.getId(),
-                                entity.getName(),
-                                entity,
-                                entity.getAction()
-                        )
-                ));
-
-        // 3. Populate the thread-safe global registry
-        permissionRegistry.initialize(definitionsMap);
-
-        System.out.println("✅ Global Permission Registry ready with " + 
-                           permissionRegistry.totalPermissions() + " definitions.");
-    }
+        private void loadRoleDefinitions() {
+                List<Role> roles = this.roleService.getAllRoles();
+                Map<Long, String> roleDefinitionsMap = roles.stream()
+                                .collect(Collectors.toMap(
+                                                Role::getId,
+                                                role -> role.getRoleLevel().name()));
+                this.roleRegistry.initialize(roleDefinitionsMap);
+                log.info("Role definition initialized");
+        }
 
 }
