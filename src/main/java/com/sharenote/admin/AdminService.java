@@ -5,11 +5,17 @@ import com.sharenote.admin.dto.PermanentBanRequest;
 import com.sharenote.admin.dto.TemporaryBanRequest;
 import com.sharenote.admin.dto.UnbanRequest;
 import com.sharenote.audit.AuditAction;
-import com.sharenote.audit.AuditPublisher;
+import com.sharenote.audit.AuditRecorder;
 import com.sharenote.note.CurrentUserNotFoundException;
-import com.sharenote.user.User;
+import com.sharenote.role.RoleLevel;
 import com.sharenote.user.UserNotFoundException;
 import com.sharenote.user.UserRepository;
+import com.sharenote.user.UserService;
+import com.sharenote.user.entities.User;
+import com.sharenote.user.entities.UserPolicyStatus;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -19,20 +25,26 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
+
+import javax.management.relation.Role;
 
 @Service
 public class AdminService {
 
-    private static final int TEMPORARY_BAN_ESCALATION_THRESHOLD = 3;
+    @Value(value = "${user.policy.temporary_ban_escalation_threshold:3}")
+    private final int TEMPORARY_BAN_ESCALATION_THRESHOLD;
 
     private final UserRepository userRepository;
-    private final AuditPublisher auditPublisher;
+    private final AuditRecorder auditRecorder;
+    private final UserService userService;
     private final Clock clock;
 
-    public AdminService(UserRepository userRepository, AuditPublisher auditPublisher) {
+    public AdminService(UserRepository userRepository, AuditRecorder auditRecorder, UserService userService) {
         this.userRepository = userRepository;
-        this.auditPublisher = auditPublisher;
+        this.auditRecorder = auditRecorder;
+        this.userService = userService;
         this.clock = Clock.systemUTC();
     }
 
@@ -45,14 +57,21 @@ public class AdminService {
     }
 
     @Transactional
-    public AdminUserResponse banTemporarily(Long userId, TemporaryBanRequest request) {
-        User admin = getCurrentAdmin();
-        User user = getUser(userId);
+    public AdminUserResponse banUserTemporarily(Long userId, TemporaryBanRequest request) {
+        if(hasAuthority(userService.getCurrentAuthorities()){
 
-        if (user.getPolicyViolationCount() + 1 >= TEMPORARY_BAN_ESCALATION_THRESHOLD) {
-            user.banPermanently(request.reason().trim(), request.notice().trim());
+        }
+        User admin = getAdmin();
+        User user = getUser(userId);
+        UserPolicyStatus userPolicy = userService.getUserPolicyStatusForUser(userId);
+
+        if (userPolicy.getPolicyViolationCount() + 1 >= TEMPORARY_BAN_ESCALATION_THRESHOLD) {
+            userPolicy.setBanReason(request.reason().trim());
+            userPolicy.setBanNotice(request.notice().trim());
+            userPolicy.setUser(user);
+            userRepository.saveUserPolicy(userPolicy);
             User savedUser = userRepository.save(user);
-            auditPublisher.publish(
+            auditRecorder.record(
                     AuditAction.USER_PERMANENTLY_BANNED,
                     admin,
                     "USER",
@@ -65,7 +84,7 @@ public class AdminService {
         Instant bannedUntil = Instant.now(clock).plus(request.durationDays(), ChronoUnit.DAYS);
         user.banTemporarily(bannedUntil, request.reason().trim(), request.notice().trim());
         User savedUser = userRepository.save(user);
-        auditPublisher.publish(
+        auditRecorder.publish(
                 AuditAction.USER_TEMPORARILY_BANNED,
                 admin,
                 "USER",
@@ -82,7 +101,7 @@ public class AdminService {
 
         user.banPermanently(request.reason().trim(), request.notice().trim());
         User savedUser = userRepository.save(user);
-        auditPublisher.publish(
+        auditRecorder.publish(
                 AuditAction.USER_PERMANENTLY_BANNED,
                 admin,
                 "USER",
@@ -99,7 +118,7 @@ public class AdminService {
 
         user.clearBan(request.notice().trim());
         User savedUser = userRepository.save(user);
-        auditPublisher.publish(
+        auditRecorder.publish(
                 AuditAction.USER_UNBANNED,
                 admin,
                 "USER",
@@ -108,7 +127,11 @@ public class AdminService {
         return toResponse(savedUser);
     }
 
-    private User getCurrentAdmin() {
+    private User getAdmin() {
+        User currectUser = userService.getCurrentUser();
+        Set<Role> roles = currectUser.getRoles();
+        roles.stream().filter(r-> r.getRoleName().endsWith(null) || r.getRoleName().equals(RoleLevel.SUPER_ADMIN))
+
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null || !authentication.isAuthenticated()) {
             throw new CurrentUserNotFoundException();
@@ -117,6 +140,8 @@ public class AdminService {
         return userRepository.findByEmailIgnoreCase(authentication.getName())
                 .orElseThrow(CurrentUserNotFoundException::new);
     }
+
+
 
     private User getUser(Long userId) {
         return userRepository.findById(userId).orElseThrow(() -> new UserNotFoundException(userId));
