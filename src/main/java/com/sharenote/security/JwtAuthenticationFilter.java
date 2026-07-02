@@ -15,6 +15,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.stream.Stream;
 
 @Component
@@ -29,13 +30,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         this.jwtService = jwtService;
     }
 
+    /* Processes incoming requests to authenticate users based on JWT tokens.*/
     @Override
-    // Validates a bearer JWT and hydrates SecurityContext with permission authorities.
     protected void doFilterInternal(
             @NonNull HttpServletRequest request,
             @NonNull HttpServletResponse response,
-            @NonNull FilterChain filterChain
-    ) throws ServletException, IOException {
+            @NonNull FilterChain filterChain) throws ServletException, IOException {
         String authorizationHeader = request.getHeader(AUTHORIZATION_HEADER);
 
         if (authorizationHeader == null || !authorizationHeader.startsWith(BEARER_PREFIX)) {
@@ -54,8 +54,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
                         username,
                         null,
-                        extractAuthorities(token)
-                );
+                        extractAuthorities(token));
                 authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                 SecurityContextHolder.getContext().setAuthentication(authentication);
             }
@@ -66,14 +65,17 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         filterChain.doFilter(request, response);
     }
 
-    // Maps JWT permission strings and roles into Spring Security authorities.
-    private java.util.List<SimpleGrantedAuthority> extractAuthorities(String token) {
-        Stream<String> permissions = jwtService.extractPermissions(token).stream();
-        Stream<String> roles = jwtService.extractRoles(token).stream()
-                .map(role -> role.startsWith("ROLE_") ? role : "ROLE_" + role);
-        return Stream.concat(permissions, roles)
-                .distinct()
-                .map(SimpleGrantedAuthority::new)
-                .toList();
+    /* Extracts permission and role authorities from the JWT token. */
+    private List<SimpleGrantedAuthority> extractAuthorities(String token) {
+        Stream<SimpleGrantedAuthority> permissionAuthorities = jwtService.extractPermissions(token)
+                .stream()
+                .map(SimpleGrantedAuthority::new);
+
+        Stream<SimpleGrantedAuthority> roleAuthorities = jwtService.extractRoles(token)
+                .stream()
+                .map(role -> role.startsWith("ROLE_") ? role : "ROLE_" + role)
+                .map(SimpleGrantedAuthority::new);
+
+        return Stream.concat(permissionAuthorities, roleAuthorities).toList();
     }
 }
