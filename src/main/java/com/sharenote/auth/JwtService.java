@@ -1,21 +1,5 @@
 package com.sharenote.auth;
 
-import com.sharenote.role.Role;
-import com.sharenote.role.RoleLevel;
-import com.sharenote.security.Permission;
-import com.sharenote.security.PermissionAuthorityService;
-import com.sharenote.user.entities.User;
-
-import io.jsonwebtoken.Claims;
-import io.jsonwebtoken.JwtException;
-import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.security.Keys;
-import lombok.NonNull;
-
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.stereotype.Service;
-
-import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.Duration;
@@ -29,6 +13,21 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import javax.crypto.SecretKey;
+
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.stereotype.Service;
+
+import com.sharenote.cache.CacheManager;
+import com.sharenote.security.registry.PermissionRegistry;
+import com.sharenote.security.registry.RoleRegistry;
+import com.sharenote.user.entities.User;
+
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.JwtException;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.security.Keys;
+
 @Service
 public class JwtService {
 
@@ -37,34 +36,49 @@ public class JwtService {
     private static final String USER_PERMISSION_CLAIM = "userPermission";
 
     private final JwtProperties jwtProperties;
-    private final PermissionAuthorityService permissionAuthorityService;
-    private final Clock clock;
 
-    public JwtService(JwtProperties jwtProperties, PermissionAuthorityService permissionAuthorityService) {
+    private final Clock clock;
+    private final CacheManager cache;
+    private final PermissionRegistry permissionRegistry;
+    private final RoleRegistry roleRegistry;
+
+    public JwtService(JwtProperties jwtProperties,
+            CacheManager cache, PermissionRegistry permissionRegistry, RoleRegistry roleRegistry) {
         this.jwtProperties = jwtProperties;
-        this.permissionAuthorityService = permissionAuthorityService;
+
         this.clock = Clock.systemUTC();
+        this.cache = cache;
+        this.permissionRegistry = permissionRegistry;
+        this.roleRegistry = roleRegistry;
     }
 
     public JwtService(JwtProperties jwtProperties) {
-        this(jwtProperties, null);
+        this(jwtProperties, null, null, null);
     }
 
-    // Generates a signed access token that includes user identity, roles, and dynamic permissions.
+    // Generates a signed access token that includes user identity, roles, and
+    // dynamic permissions.
     public String generateAccessToken(User user) {
         Instant now = Instant.now(clock);
         Instant expiresAt = now.plus(getAccessTokenLifetime());
 
-        return Jwts.builder()
+        Set<Long> userRoles = user.getRoles().stream().map(r -> r.getId()).collect(Collectors.toSet());
+        Set<Long> userPermissions = user.getRoles().stream().flatMap(r -> r.getPermissions().stream())
+                .map(p -> p.getId()).collect(Collectors.toSet());
+
+        String authToken = Jwts.builder()
                 .subject(user.getUsername())
-                .claims(Map.of(USER_ID_CLAIM, user.getId(),
-                USER_ROLE_CLAIM, user.getRoles().stream().map(r->r.getId()).collect(Collectors.toSet()),
-                USER_PERMISSION_CLAIM, user.getRoles().stream().flatMap(r->r.getPermissions().stream()).map(p-> p.getId()).collect(Collectors.toSet())
-            ))
+                .claims(Map.of(
+                        USER_ID_CLAIM, user.getId(),
+                        USER_ROLE_CLAIM, userRoles,
+                        USER_PERMISSION_CLAIM, userPermissions))
                 .issuedAt(Date.from(now))
                 .expiration(Date.from(expiresAt))
                 .signWith(getSigningKey())
                 .compact();
+
+        // this.cacheAuthToken(user.getId(), authToken);
+        return authToken;
     }
 
     // Returns the configured access token lifetime in seconds for API responses.
@@ -77,7 +91,8 @@ public class JwtService {
         return extractClaim(token, Claims::getSubject);
     }
 
-    // Extracts role names from a verified token claim for compatibility with role-aware code.
+    // Extracts role names from a verified token claim for compatibility with
+    // role-aware code.
     public List<String> extractUserId(String token) {
         return extractStringListClaim(token, USER_ID_CLAIM);
     }
@@ -92,7 +107,8 @@ public class JwtService {
         }
     }
 
-    // Validates signature, expiration, and subject against an existing UserDetails object.
+    // Validates signature, expiration, and subject against an existing UserDetails
+    // object.
     public boolean isTokenValid(String token, UserDetails userDetails) {
         try {
             String username = extractUsername(token);
@@ -122,7 +138,8 @@ public class JwtService {
         return claimsResolver.apply(claims);
     }
 
-    // Reads list-style claims defensively because JWT parsers expose collection values as raw objects.
+    // Reads list-style claims defensively because JWT parsers expose collection
+    // values as raw objects.
     private List<String> extractStringListClaim(String token, String claimName) {
         Object claim = parseClaims(token).get(claimName);
         if (!(claim instanceof Collection<?> values)) {
@@ -134,14 +151,6 @@ public class JwtService {
                 .toList();
     }
 
-    // Resolves role permissions from the database-backed permission authority service.
-    private Set<String> resolvePermissions(Long userId) {
-        if (permissionAuthorityService == null) {
-            return Set.of();
-        }
-        return permissionAuthorityService.resolvePermissionAuthorities(user.getRoles());
-    }
-
     // Returns the configured access token lifetime as a Duration.
     private Duration getAccessTokenLifetime() {
         return Duration.ofMinutes(jwtProperties.accessTokenExpirationMinutes());
@@ -151,5 +160,41 @@ public class JwtService {
     private SecretKey getSigningKey() {
         byte[] keyBytes = jwtProperties.secret().getBytes(StandardCharsets.UTF_8);
         return Keys.hmacShaKeyFor(keyBytes);
+    }
+
+    public List<String> extractPermissions(String token) {
+        List<String> permissionIds = extractStringListClaim(token, USER_PERMISSION_CLAIM);
+
+        if (permissionIds == null || permissionIds.isEmpty()) {
+            return List.of();
+        }
+
+        return permissionIds.stream()
+                .filter(this::isNumeric)
+                .map(Long::valueOf)
+                .map(permissionRegistry::getDefinition)
+                .filter(Objects::nonNull)
+                .toList();
+    }
+
+    public List<String> extractRoles(String token) {
+        List<String> roleIds = extractStringListClaim(token, USER_ROLE_CLAIM);
+
+        if (roleIds == null || roleIds.isEmpty()) {
+            return List.of();
+        }
+
+        return roleIds.stream()
+                .filter(this::isNumeric)
+                .map(Long::valueOf)
+                .map(roleRegistry::getDefinition)
+                .filter(Objects::nonNull)
+                .toList();
+    }
+
+    private boolean isNumeric(String str) {
+        if (str == null)
+            return false;
+        return str.matches("\\d+");
     }
 }
