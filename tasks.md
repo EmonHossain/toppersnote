@@ -232,6 +232,24 @@
 
 ## 🚀 FEATURE EXTENSION BACKLOG
 
+* [x] EXT-012 Dynamic Cache-Backed URL Authorization Matrix
+
+  * Store route permissions, roles, and role-permission assignments in the database
+  * Issue JWT access tokens containing dynamic permission authorities
+  * Authorize protected requests through a Caffeine-backed URL authorization matrix
+  * Enforce default-deny behavior with most-specific Ant pattern matching
+  * Add cache eviction support and focused authorization/JWT/cache tests
+
+* [x] EXT-011 Kafka Email Verification Delivery
+
+  * Configure Apache Kafka in KRaft mode for local Docker Compose development without ZooKeeper
+  * Publish email verification requests through Kafka and consume them asynchronously in the Spring Boot application
+  * Configure Mailpit for local SMTP delivery and browser-based email inspection
+  * Create a modern responsive HTML verification email containing a secure token-based verification link
+  * Update authentication, email verification, and user APIs where necessary while preserving stateless security and the configured `API_BASE_PATH`
+  * Keep Kafka, SMTP, topic, consumer, and verification-link settings environment-driven and documented in `.env.example`
+  * Add resilient error handling, ECS-compatible logging, OpenAPI updates, and focused tests for the email verification flow
+
 * [x] EXT-010 Study Group Activity Feed
 
   * Track study group events such as note added, edit proposed, comment added, exam date posted, and notebook updated
